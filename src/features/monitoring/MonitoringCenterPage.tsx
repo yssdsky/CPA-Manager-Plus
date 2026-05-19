@@ -7,13 +7,11 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type ReactNode,
 } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
@@ -81,6 +79,13 @@ import {
   AccountSummaryPrimary,
   AccountTokenMetricGrid,
 } from '@/features/monitoring/components/AccountOverviewCard';
+import {
+  PaginationControls,
+  RecentPattern,
+  StatusBadge,
+  SummaryCard,
+  type SummaryCardProps,
+} from '@/features/monitoring/components/MonitoringShared';
 import {
   buildAccountSummaryMetrics,
   formatPercent,
@@ -167,14 +172,6 @@ const parseDateTimeLocalValue = (value: string) => {
 
 type StatusFilter = 'all' | 'success' | 'failed';
 
-type SummaryCardProps = {
-  label: string;
-  value: string;
-  meta: string;
-  tone?: MonitoringStatusTone;
-  variant?: 'primary' | 'secondary';
-};
-
 type FocusSnapshot = {
   searchInput: string;
   selectedAccount: string;
@@ -210,19 +207,6 @@ type PaginationState<T> = {
   pageItems: T[];
   startItem: number;
   endItem: number;
-};
-
-type PaginationControlsProps = {
-  count: number;
-  currentPage: number;
-  totalPages: number;
-  startItem: number;
-  endItem: number;
-  pageSize: number;
-  pageSizeOptions: readonly number[];
-  onPageChange: (page: number) => void;
-  onPageSizeChange: (pageSize: number) => void;
-  t: TFunction;
 };
 
 const ensureSelectedOption = <T extends { value: string; label: string }>(
@@ -265,11 +249,6 @@ const buildPaginationState = <T,>(
     startItem: items.length > 0 ? startIndex + 1 : 0,
     endItem: endIndex,
   };
-};
-
-const parsePageSize = (value: string, fallback: number) => {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
 const joinShort = (values: string[], limit = 2) => {
@@ -465,121 +444,6 @@ const buildRealtimeLogRows = (rows: MonitoringEventRow[]): RealtimeLogRow[] => {
       right.id.localeCompare(left.id)
   );
 };
-
-function SummaryCard({ label, value, meta, tone, variant = 'primary' }: SummaryCardProps) {
-  const cardClassName = [
-    styles.summaryCard,
-    variant === 'secondary' ? styles.summaryCardSecondary : styles.summaryCardPrimary,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <Card className={cardClassName}>
-      <span className={styles.summaryLabel}>{label}</span>
-      <strong className={`${styles.summaryValue} ${tone ? styles[`tone${tone}`] : ''}`}>
-        {value}
-      </strong>
-      <span className={styles.summaryMeta}>{meta}</span>
-    </Card>
-  );
-}
-
-function PaginationControls({
-  count,
-  currentPage,
-  totalPages,
-  startItem,
-  endItem,
-  pageSize,
-  pageSizeOptions,
-  onPageChange,
-  onPageSizeChange,
-  t,
-}: PaginationControlsProps) {
-  if (count === 0) return null;
-
-  return (
-    <div className={styles.paginationBar}>
-      <div className={styles.paginationInfo}>
-        {t('monitoring.pagination_info', {
-          current: currentPage,
-          total: totalPages,
-          start: startItem,
-          end: endItem,
-          count,
-        })}
-      </div>
-      <div className={styles.paginationControls}>
-        <div className={styles.pageSizeField}>
-          <span>{t('monitoring.page_size_label')}</span>
-          <Select
-            className={styles.pageSizeSelect}
-            triggerClassName={styles.pageSizeSelectTrigger}
-            value={String(pageSize)}
-            options={pageSizeOptions.map((size) => ({
-              value: String(size),
-              label: t('monitoring.page_size_option', { count: size }),
-            }))}
-            onChange={(value) => onPageSizeChange(parsePageSize(value, pageSize))}
-            ariaLabel={t('monitoring.page_size_label')}
-            fullWidth={false}
-          />
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-          disabled={currentPage <= 1}
-        >
-          {t('monitoring.pagination_prev')}
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage >= totalPages}
-        >
-          {t('monitoring.pagination_next')}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ tone, children }: { tone: MonitoringStatusTone; children: ReactNode }) {
-  return <span className={`${styles.statusBadge} ${styles[`tone${tone}`]}`}>{children}</span>;
-}
-
-function RecentPattern({
-  pattern,
-  variant = 'default',
-}: {
-  pattern: boolean[];
-  variant?: 'default' | 'plain';
-}) {
-  const normalized = pattern.length > 0 ? pattern : Array.from({ length: 10 }, () => true);
-  const containerClassName = [
-    styles.patternBars,
-    variant === 'plain' ? styles.patternBarsPlain : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-  const barClassName = [styles.patternBar, variant === 'plain' ? styles.patternBarPlain : '']
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <div className={containerClassName} aria-hidden="true">
-      {normalized.map((item, index) => (
-        <span
-          key={`${index}-${item ? 'success' : 'failed'}`}
-          className={`${barClassName} ${item ? styles.patternSuccess : styles.patternFailed}`}
-        />
-      ))}
-    </div>
-  );
-}
 
 const formatAccountOverviewScopeText = (
   bounds: { startMs: number; endMs: number } | null,
