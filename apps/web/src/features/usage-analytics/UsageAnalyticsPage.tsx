@@ -38,6 +38,7 @@ import {
   IconTimer,
   IconTrendingUp,
 } from '@/components/ui/icons';
+import { useThemeStore } from '@/stores';
 import {
   buildUsageHeatmapChartData,
   buildMonitoringDetailUrl,
@@ -99,7 +100,6 @@ const trendMetricOptions: Array<{ value: UsageTrendMetricKey; labelKey: string }
   { value: 'estimatedCost', labelKey: 'usage_analytics.trend_metric_estimatedCost' },
 ];
 
-const pieColors = ['#2563eb', '#0ea5a7', '#8b5cf6', '#f97316', '#94a3b8'];
 const chartHeight = 360;
 const compactChartHeight = 220;
 
@@ -145,11 +145,35 @@ const usageChartAxisKeys = {
   cost: 2,
 } as const;
 
-const usageChartAxisLabelColors = {
-  requests: '#2563eb',
-  tokens: '#0ea5a7',
-  cost: '#f97316',
-} as const;
+type UsageChartTheme = {
+  axisColors: Record<'requests' | 'tokens' | 'cost', string>;
+  categoryPalette: string[];
+  heatmapColors: string[];
+  healthColors: {
+    failure: string;
+    latency: string;
+    success: string;
+  };
+  metricColors: Record<UsageMetricKey, string>;
+  surface: {
+    axisLabel: string;
+    axisLine: string;
+    axisPointer: string;
+    barBackground: string;
+    heatmapCellBorder: string;
+    heatmapEmphasisBorder: string;
+    pieBorder: string;
+    pieShadow: string;
+    selectedLine: string;
+    splitLine: string;
+    tooltipBackground: string;
+    tooltipBorder: string;
+    tooltipMuted: string;
+    tooltipShadow: string;
+    tooltipText: string;
+  };
+  tokenStructureColors: string[];
+};
 
 const analysisStatToneColors = {
   blue: '#2563eb',
@@ -159,8 +183,105 @@ const analysisStatToneColors = {
   teal: '#0ea5a7',
   violet: '#7c3aed',
 } as const;
+const lightUsageChartTheme: UsageChartTheme = {
+  axisColors: {
+    requests: '#409eff',
+    tokens: '#14b8a6',
+    cost: '#f59e0b',
+  },
+  categoryPalette: ['#409eff', '#14b8a6', '#8b5cf6', '#f59e0b', '#94a3b8'],
+  heatmapColors: ['#eff6ff', '#93c5fd', '#409eff', '#7c3aed'],
+  healthColors: {
+    failure: '#f56c6c',
+    latency: '#7c3aed',
+    success: '#67c23a',
+  },
+  metricColors: {
+    cachedTokens: '#06b6d4',
+    estimatedCost: '#f59e0b',
+    inputTokens: '#60a5fa',
+    outputTokens: '#8b5cf6',
+    requestCount: '#409eff',
+    totalTokens: '#14b8a6',
+  },
+  surface: {
+    axisLabel: '#5f6c7b',
+    axisLine: '#d8e5f2',
+    axisPointer: '#8b95a6',
+    barBackground: 'rgba(139, 149, 166, 0.14)',
+    heatmapCellBorder: '#ffffff',
+    heatmapEmphasisBorder: '#2c3e50',
+    pieBorder: '#ffffff',
+    pieShadow: 'rgba(15, 23, 42, 0.18)',
+    selectedLine: '#8b95a6',
+    splitLine: '#d3e1ef',
+    tooltipBackground: 'rgba(255, 255, 255, 0.96)',
+    tooltipBorder: '#d8e5f2',
+    tooltipMuted: '#5f6c7b',
+    tooltipShadow: 'box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);',
+    tooltipText: '#2c3e50',
+  },
+  tokenStructureColors: ['#3b82f6', '#8b5cf6', '#14b8a6', '#f59e0b'],
+};
+
+const darkUsageChartTheme: UsageChartTheme = {
+  axisColors: {
+    requests: '#79bbff',
+    tokens: '#2dd4bf',
+    cost: '#fbbf24',
+  },
+  categoryPalette: ['#79bbff', '#2dd4bf', '#a78bfa', '#fbbf24', '#a3a6ad'],
+  heatmapColors: ['#102f4f', '#1d5f98', '#409eff', '#79bbff'],
+  healthColors: {
+    failure: '#fab6b6',
+    latency: '#c4b5fd',
+    success: '#95d475',
+  },
+  metricColors: {
+    cachedTokens: '#22d3ee',
+    estimatedCost: '#fbbf24',
+    inputTokens: '#60a5fa',
+    outputTokens: '#a78bfa',
+    requestCount: '#79bbff',
+    totalTokens: '#2dd4bf',
+  },
+  surface: {
+    axisLabel: '#a3a3a3',
+    axisLine: 'rgba(255, 255, 255, 0.12)',
+    axisPointer: '#7a7a7a',
+    barBackground: 'rgba(255, 255, 255, 0.08)',
+    heatmapCellBorder: '#1b1f2a',
+    heatmapEmphasisBorder: '#e5e5e5',
+    pieBorder: '#1b1f2a',
+    pieShadow: 'rgba(0, 0, 0, 0.36)',
+    selectedLine: '#7a7a7a',
+    splitLine: 'rgba(255, 255, 255, 0.1)',
+    tooltipBackground: 'rgba(24, 28, 40, 0.96)',
+    tooltipBorder: 'rgba(255, 255, 255, 0.12)',
+    tooltipMuted: '#a3a3a3',
+    tooltipShadow: 'box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38);',
+    tooltipText: '#e5e5e5',
+  },
+  tokenStructureColors: ['#60a5fa', '#a78bfa', '#2dd4bf', '#fbbf24'],
+};
+
+const getUsageChartTheme = (resolvedTheme: 'light' | 'dark'): UsageChartTheme =>
+  resolvedTheme === 'dark' ? darkUsageChartTheme : lightUsageChartTheme;
+
+const useUsageChartTheme = () => {
+  const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
+  return getUsageChartTheme(resolvedTheme);
+};
 
 type AnalysisStatTone = keyof typeof analysisStatToneColors;
+const appendHexAlpha = (color: string, alphaHex: string) =>
+  /^#[\da-f]{6}$/i.test(color) ? `${color}${alphaHex}` : color;
+
+const getThemedUsageMetrics = (chartTheme: UsageChartTheme): typeof USAGE_METRICS =>
+  USAGE_METRICS.map((metric) => ({
+    ...metric,
+    color: chartTheme.metricColors[metric.key],
+  })) as typeof USAGE_METRICS;
 
 const compactNumber = (value: number) => {
   if (!Number.isFinite(value)) return '0';
@@ -185,6 +306,26 @@ const escapeHtml = (value: string | number | null | undefined) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+
+const tooltipTitleHtml = (chartTheme: UsageChartTheme, titleHtml: string) =>
+  `<b style="color:${chartTheme.surface.tooltipText}">${titleHtml}</b>`;
+
+const tooltipRowHtml = (chartTheme: UsageChartTheme, labelHtml: string, valueHtml: string) =>
+  `<div class="${styles.echartsTooltipRow}" style="color:${chartTheme.surface.tooltipMuted}"><span>${labelHtml}</span><strong style="color:${chartTheme.surface.tooltipText}">${valueHtml}</strong></div>`;
+
+const tooltipHtml = (chartTheme: UsageChartTheme, rowsHtml: string, titleHtml?: string | null) =>
+  `<div class="${styles.echartsTooltip}" style="color:${chartTheme.surface.tooltipMuted}">${
+    titleHtml ? tooltipTitleHtml(chartTheme, titleHtml) : ''
+  }${rowsHtml}</div>`;
+
+const getTooltipOption = (chartTheme: UsageChartTheme) => ({
+  backgroundColor: chartTheme.surface.tooltipBackground,
+  borderColor: chartTheme.surface.tooltipBorder,
+  extraCssText: chartTheme.surface.tooltipShadow,
+  textStyle: {
+    color: chartTheme.surface.tooltipMuted,
+  },
+});
 
 const getMetricLabel = (key: UsageMetricKey, t: ReturnType<typeof useTranslation>['t']) => {
   const metric = USAGE_METRICS.find((item) => item.key === key);
@@ -326,7 +467,12 @@ const getAxisValueFormatter = (axis: (typeof USAGE_METRICS)[number]['axis']) => 
 };
 
 const getUsageChartTooltipFormatter =
-  (timeline: UsageTimelinePoint[], locale: string, t: ReturnType<typeof useTranslation>['t']) =>
+  (
+    timeline: UsageTimelinePoint[],
+    locale: string,
+    t: ReturnType<typeof useTranslation>['t'],
+    chartTheme: UsageChartTheme
+  ) =>
   (params: unknown) => {
     const items = Array.isArray(params) ? params : [params];
     const first = items[0] as { dataIndex?: number } | undefined;
@@ -346,13 +492,19 @@ const getUsageChartTooltipFormatter =
           metric && typeof entry.data === 'number'
             ? formatMetricValue(metric.key, entry.data)
             : String(entry.data ?? '-');
-        return `<div class="${styles.echartsTooltipRow}"><span>${entry.marker ?? ''}${escapeHtml(entry.seriesName)}</span><strong>${escapeHtml(value)}</strong></div>`;
+        return tooltipRowHtml(
+          chartTheme,
+          `${entry.marker ?? ''}${escapeHtml(entry.seriesName)}`,
+          escapeHtml(value)
+        );
       })
       .join('');
 
-    return `<div class="${styles.echartsTooltip}"><b>${escapeHtml(
-      point ? formatLocalDateTime(point.bucketMs, locale) : ''
-    )}</b>${rows}</div>`;
+    return tooltipHtml(
+      chartTheme,
+      rows,
+      escapeHtml(point ? formatLocalDateTime(point.bucketMs, locale) : '')
+    );
   };
 
 const buildUsageTrendChartOption = ({
@@ -361,6 +513,7 @@ const buildUsageTrendChartOption = ({
   metrics,
   selectedBucket,
   t,
+  chartTheme,
   timeline,
 }: {
   compact: boolean;
@@ -368,6 +521,7 @@ const buildUsageTrendChartOption = ({
   metrics: typeof USAGE_METRICS;
   selectedBucket?: UsageTimelinePoint | null;
   t: ReturnType<typeof useTranslation>['t'];
+  chartTheme: UsageChartTheme;
   timeline: UsageTimelinePoint[];
 }): UsageTrendChartOption => {
   const selectedLabel = selectedBucket?.label;
@@ -385,7 +539,7 @@ const buildUsageTrendChartOption = ({
           symbol: ['none', 'none'],
           label: { show: false },
           lineStyle: {
-            color: '#64748b',
+            color: chartTheme.surface.selectedLine,
             type: 'dashed' as const,
             width: 1.5,
           },
@@ -427,7 +581,7 @@ const buildUsageTrendChartOption = ({
       itemWidth: 8,
       selectedMode: false,
       textStyle: {
-        color: '#64748b',
+        color: chartTheme.surface.axisLabel,
         fontSize: 12,
         fontWeight: 700,
       },
@@ -436,27 +590,25 @@ const buildUsageTrendChartOption = ({
       appendToBody: true,
       axisPointer: {
         lineStyle: {
-          color: '#94a3b8',
+          color: chartTheme.surface.axisPointer,
           type: 'dashed',
           width: 1,
         },
         snap: true,
         type: 'line',
       },
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: '#dbe3ef',
+      ...getTooltipOption(chartTheme),
       borderRadius: 10,
       borderWidth: 1,
       className: styles.echartsTooltipWrapper,
       confine: true,
-      extraCssText: 'box-shadow: 0 16px 36px rgba(15,23,42,0.14);',
-      formatter: getUsageChartTooltipFormatter(timeline, locale, t),
+      formatter: getUsageChartTooltipFormatter(timeline, locale, t, chartTheme),
       padding: 0,
       trigger: 'axis',
     },
     xAxis: {
       axisLabel: {
-        color: '#64748b',
+        color: chartTheme.surface.axisLabel,
         fontSize: 11,
         fontWeight: 700,
         hideOverlap: true,
@@ -464,7 +616,7 @@ const buildUsageTrendChartOption = ({
       },
       axisLine: {
         lineStyle: {
-          color: '#e2e8f0',
+          color: chartTheme.surface.axisLine,
         },
       },
       axisTick: { show: false },
@@ -475,18 +627,18 @@ const buildUsageTrendChartOption = ({
     yAxis: [
       {
         axisLabel: {
-          color: usageChartAxisLabelColors.requests,
+          color: chartTheme.axisColors.requests,
           formatter: getAxisValueFormatter('requests'),
           fontWeight: 700,
         },
-        nameTextStyle: { color: usageChartAxisLabelColors.requests },
+        nameTextStyle: { color: chartTheme.axisColors.requests },
         position: 'left',
         scale: true,
         show: requestsVisible,
         splitLine: {
           show: splitLineAxis === 'requests',
           lineStyle: {
-            color: '#e8edf5',
+            color: chartTheme.surface.splitLine,
             type: 'dashed',
           },
         },
@@ -494,7 +646,7 @@ const buildUsageTrendChartOption = ({
       },
       {
         axisLabel: {
-          color: usageChartAxisLabelColors.tokens,
+          color: chartTheme.axisColors.tokens,
           formatter: getAxisValueFormatter('tokens'),
           fontWeight: 700,
         },
@@ -505,7 +657,7 @@ const buildUsageTrendChartOption = ({
         splitLine: {
           show: splitLineAxis === 'tokens',
           lineStyle: {
-            color: '#e8edf5',
+            color: chartTheme.surface.splitLine,
             type: 'dashed',
           },
         },
@@ -513,7 +665,7 @@ const buildUsageTrendChartOption = ({
       },
       {
         axisLabel: {
-          color: usageChartAxisLabelColors.cost,
+          color: chartTheme.axisColors.cost,
           formatter: getAxisValueFormatter('cost'),
           fontWeight: 700,
         },
@@ -523,7 +675,7 @@ const buildUsageTrendChartOption = ({
         splitLine: {
           show: splitLineAxis === 'cost',
           lineStyle: {
-            color: '#e8edf5',
+            color: chartTheme.surface.splitLine,
             type: 'dashed',
           },
         },
@@ -537,8 +689,8 @@ const buildUsageTrendChartOption = ({
           : {
               color: {
                 colorStops: [
-                  { color: `${metric.color}26`, offset: 0 },
-                  { color: `${metric.color}00`, offset: 1 },
+                  { color: appendHexAlpha(metric.color, compact ? '1f' : '2e'), offset: 0 },
+                  { color: appendHexAlpha(metric.color, '00'), offset: 1 },
                 ],
                 x: 0,
                 x2: 0,
@@ -583,13 +735,16 @@ function UsageLineChart({
   compact?: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const chartTheme = useUsageChartTheme();
   const metrics = useMemo(
-    () => USAGE_METRICS.filter((metric) => selectedMetrics.includes(metric.key)),
-    [selectedMetrics]
+    () =>
+      getThemedUsageMetrics(chartTheme).filter((metric) => selectedMetrics.includes(metric.key)),
+    [chartTheme, selectedMetrics]
   );
   const option = useMemo(
     () =>
       buildUsageTrendChartOption({
+        chartTheme,
         compact,
         locale: i18n.language,
         metrics,
@@ -597,7 +752,7 @@ function UsageLineChart({
         t,
         timeline,
       }),
-    [compact, i18n.language, metrics, selectedBucket, t, timeline]
+    [chartTheme, compact, i18n.language, metrics, selectedBucket, t, timeline]
   );
   const handleClick = useCallback(
     (event: ECElementEvent) => {
@@ -647,6 +802,7 @@ function MiniTrendPlaceholder() {
 
 function CostShareChart({ rows }: { rows: UsageRankRow[] }) {
   const { t } = useTranslation();
+  const chartTheme = useUsageChartTheme();
   const totalCost = rows.reduce((sum, row) => sum + row.estimatedCost, 0);
   const chartRows = rows.filter((row) => row.estimatedCost > 0).slice(0, 5);
 
@@ -662,29 +818,34 @@ function CostShareChart({ rows }: { rows: UsageRankRow[] }) {
   const option: CostShareChartOption = {
     animationDuration: 260,
     backgroundColor: 'transparent',
-    color: pieColors,
+    color: chartTheme.categoryPalette,
     legend: { show: false },
     tooltip: {
       appendToBody: true,
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: '#dbe3ef',
+      ...getTooltipOption(chartTheme),
       borderRadius: 10,
       borderWidth: 1,
       className: styles.echartsTooltipWrapper,
       confine: true,
-      extraCssText: 'box-shadow: 0 16px 36px rgba(15,23,42,0.14);',
       formatter: (params: unknown) => {
         const item = params as { data?: { value?: number }; marker?: string; name?: string };
         const value = Number(item.data?.value ?? 0);
-        return `<div class="${styles.echartsTooltip}"><b>${escapeHtml(
-          item.name
-        )}</b><div class="${styles.echartsTooltipRow}"><span>${item.marker ?? ''}${escapeHtml(
-          t('usage_analytics.total_cost')
-        )}</span><strong>${escapeHtml(
-          formatMetricValue('estimatedCost', value)
-        )}</strong></div><div class="${styles.echartsTooltipRow}"><span>${escapeHtml(
-          t('usage_analytics.share')
-        )}</span><strong>${escapeHtml(formatPercent(value / totalCost))}</strong></div></div>`;
+        const titleHtml = escapeHtml(
+          item.name // user-controlled tooltip label
+        );
+        return tooltipHtml(
+          chartTheme,
+          `${tooltipRowHtml(
+            chartTheme,
+            `${item.marker ?? ''}${escapeHtml(t('usage_analytics.total_cost'))}`,
+            escapeHtml(formatMetricValue('estimatedCost', value))
+          )}${tooltipRowHtml(
+            chartTheme,
+            escapeHtml(t('usage_analytics.share')),
+            escapeHtml(formatPercent(value / totalCost))
+          )}`,
+          titleHtml
+        );
       },
       padding: 0,
       trigger: 'item',
@@ -700,12 +861,12 @@ function CostShareChart({ rows }: { rows: UsageRankRow[] }) {
         emphasis: {
           itemStyle: {
             shadowBlur: 12,
-            shadowColor: 'rgba(15,23,42,0.18)',
+            shadowColor: chartTheme.surface.pieShadow,
           },
           scaleSize: 4,
         },
         itemStyle: {
-          borderColor: '#fff',
+          borderColor: chartTheme.surface.pieBorder,
           borderRadius: 6,
           borderWidth: 3,
         },
@@ -734,7 +895,12 @@ function CostShareChart({ rows }: { rows: UsageRankRow[] }) {
       <div className={styles.costShareLegend}>
         {chartRows.map((row, index) => (
           <span key={row.id}>
-            <i style={{ backgroundColor: pieColors[index % pieColors.length] }} />
+            <i
+              style={{
+                backgroundColor:
+                  chartTheme.categoryPalette[index % chartTheme.categoryPalette.length],
+              }}
+            />
             <b>{row.label}</b>
             <em>{formatPercent(row.estimatedCost / totalCost)}</em>
           </span>
@@ -746,6 +912,7 @@ function CostShareChart({ rows }: { rows: UsageRankRow[] }) {
 
 function CostRankChart({ rows, title }: { rows: UsageRankRow[]; title: string }) {
   const { t } = useTranslation();
+  const chartTheme = useUsageChartTheme();
   const chartRows = useMemo(
     () =>
       [...rows]
@@ -763,13 +930,11 @@ function CostRankChart({ rows, title }: { rows: UsageRankRow[]; title: string })
       grid: { bottom: 8, containLabel: true, left: 8, right: 74, top: 8 },
       tooltip: {
         appendToBody: true,
-        backgroundColor: 'rgba(255,255,255,0.96)',
-        borderColor: '#dbe3ef',
+        ...getTooltipOption(chartTheme),
         borderRadius: 10,
         borderWidth: 1,
         className: styles.echartsTooltipWrapper,
         confine: true,
-        extraCssText: 'box-shadow: 0 16px 36px rgba(15,23,42,0.14);',
         formatter: (params: unknown) => {
           const item = params as {
             data?: { share?: number; value?: number };
@@ -778,15 +943,22 @@ function CostRankChart({ rows, title }: { rows: UsageRankRow[]; title: string })
           };
           const value = Number(item.data?.value ?? 0);
           const share = Number(item.data?.share ?? 0);
-          return `<div class="${styles.echartsTooltip}"><b>${escapeHtml(
-            item.name
-          )}</b><div class="${styles.echartsTooltipRow}"><span>${item.marker ?? ''}${escapeHtml(
-            t('usage_analytics.total_cost')
-          )}</span><strong>${escapeHtml(
-            formatMetricValue('estimatedCost', value)
-          )}</strong></div><div class="${styles.echartsTooltipRow}"><span>${escapeHtml(
-            t('usage_analytics.share')
-          )}</span><strong>${escapeHtml(formatPercent(share))}</strong></div></div>`;
+          const titleHtml = escapeHtml(
+            item.name // user-controlled tooltip label
+          );
+          return tooltipHtml(
+            chartTheme,
+            `${tooltipRowHtml(
+              chartTheme,
+              `${item.marker ?? ''}${escapeHtml(t('usage_analytics.total_cost'))}`,
+              escapeHtml(formatMetricValue('estimatedCost', value))
+            )}${tooltipRowHtml(
+              chartTheme,
+              escapeHtml(t('usage_analytics.share')),
+              escapeHtml(formatPercent(share))
+            )}`,
+            titleHtml
+          );
         },
         padding: 0,
         trigger: 'item',
@@ -801,7 +973,7 @@ function CostRankChart({ rows, title }: { rows: UsageRankRow[]; title: string })
       },
       yAxis: {
         axisLabel: {
-          color: '#334155',
+          color: chartTheme.surface.tooltipText,
           fontSize: 12,
           fontWeight: 700,
           overflow: 'truncate',
@@ -819,7 +991,7 @@ function CostRankChart({ rows, title }: { rows: UsageRankRow[]; title: string })
           barWidth: 14,
           data: chartRows.map((row, index) => ({
             itemStyle: {
-              color: pieColors[index % pieColors.length],
+              color: chartTheme.categoryPalette[index % chartTheme.categoryPalette.length],
             },
             share: row.share,
             value: row.estimatedCost,
@@ -828,7 +1000,7 @@ function CostRankChart({ rows, title }: { rows: UsageRankRow[]; title: string })
             borderRadius: [0, 8, 8, 0],
           },
           label: {
-            color: '#334155',
+            color: chartTheme.surface.tooltipText,
             fontSize: 12,
             fontWeight: 800,
             formatter: (params: unknown) =>
@@ -839,13 +1011,13 @@ function CostRankChart({ rows, title }: { rows: UsageRankRow[]; title: string })
           showBackground: true,
           backgroundStyle: {
             borderRadius: [0, 8, 8, 0],
-            color: 'rgba(148, 163, 184, 0.14)',
+            color: chartTheme.surface.barBackground,
           },
           type: 'bar',
         },
       ],
     }),
-    [chartRows, maxCost, t]
+    [chartRows, chartTheme, maxCost, t]
   );
 
   if (chartRows.length === 0) {
@@ -872,28 +1044,31 @@ const formatNullableMs = (value: number | null | undefined) =>
 
 const buildHealthChartOption = (
   timeline: UsageTimelinePoint[],
-  t: ReturnType<typeof useTranslation>['t']
+  t: ReturnType<typeof useTranslation>['t'],
+  chartTheme: UsageChartTheme
 ): HealthChartOption => ({
   animationDuration: 260,
   backgroundColor: 'transparent',
-  color: ['#16a34a', '#ef4444', '#7c3aed'],
+  color: [
+    chartTheme.healthColors.success,
+    chartTheme.healthColors.failure,
+    chartTheme.healthColors.latency,
+  ],
   grid: { bottom: 34, containLabel: true, left: 8, right: 58, top: 20 },
   legend: {
     bottom: 0,
     icon: 'circle',
     itemHeight: 8,
     itemWidth: 8,
-    textStyle: { color: '#64748b', fontSize: 12, fontWeight: 700 },
+    textStyle: { color: chartTheme.surface.axisLabel, fontSize: 12, fontWeight: 700 },
   },
   tooltip: {
     appendToBody: true,
     axisPointer: { type: 'cross' },
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderColor: '#dbe3ef',
+    ...getTooltipOption(chartTheme),
     borderRadius: 10,
     borderWidth: 1,
     confine: true,
-    extraCssText: 'box-shadow: 0 16px 36px rgba(15,23,42,0.14);',
     formatter: (params: unknown) => {
       const items = Array.isArray(params) ? params : [params];
       const first = items[0] as { dataIndex?: number } | undefined;
@@ -905,31 +1080,46 @@ const buildHealthChartOption = (
             entry.seriesName === t('usage_analytics.metric_average_latency')
               ? formatNullableMs(Number(entry.data ?? 0))
               : formatPercent(Number(entry.data ?? 0));
-          return `<div class="${styles.echartsTooltipRow}"><span>${entry.marker ?? ''}${escapeHtml(entry.seriesName)}</span><strong>${escapeHtml(value)}</strong></div>`;
+          return tooltipRowHtml(
+            chartTheme,
+            `${entry.marker ?? ''}${escapeHtml(entry.seriesName)}`,
+            escapeHtml(value)
+          );
         })
         .join('');
-      return `<div class="${styles.echartsTooltip}"><b>${escapeHtml(point?.label)}</b>${rows}</div>`;
+      return tooltipHtml(chartTheme, rows, escapeHtml(point?.label));
     },
     padding: 0,
     trigger: 'axis',
   },
   xAxis: {
-    axisLabel: { color: '#64748b', fontSize: 11, fontWeight: 700, hideOverlap: true },
-    axisLine: { lineStyle: { color: '#e2e8f0' } },
+    axisLabel: {
+      color: chartTheme.surface.axisLabel,
+      fontSize: 11,
+      fontWeight: 700,
+      hideOverlap: true,
+    },
+    axisLine: { lineStyle: { color: chartTheme.surface.axisLine } },
     axisTick: { show: false },
     data: timeline.map((point) => point.label),
     type: 'category',
   },
   yAxis: [
     {
-      axisLabel: { color: '#64748b', formatter: (value: number) => `${Math.round(value * 100)}%` },
+      axisLabel: {
+        color: chartTheme.surface.axisLabel,
+        formatter: (value: number) => `${Math.round(value * 100)}%`,
+      },
       max: 1,
       min: 0,
-      splitLine: { lineStyle: { color: '#e8edf5', type: 'dashed' } },
+      splitLine: { lineStyle: { color: chartTheme.surface.splitLine, type: 'dashed' } },
       type: 'value',
     },
     {
-      axisLabel: { color: '#7c3aed', formatter: (value: number) => `${Math.round(value)}ms` },
+      axisLabel: {
+        color: chartTheme.healthColors.latency,
+        formatter: (value: number) => formatNullableMs(value),
+      },
       position: 'right',
       scale: true,
       splitLine: { show: false },
@@ -967,7 +1157,11 @@ const buildHealthChartOption = (
 
 function HealthTrendChart({ timeline }: { timeline: UsageTimelinePoint[] }) {
   const { t } = useTranslation();
-  const option = useMemo(() => buildHealthChartOption(timeline, t), [timeline, t]);
+  const chartTheme = useUsageChartTheme();
+  const option = useMemo(
+    () => buildHealthChartOption(timeline, t, chartTheme),
+    [chartTheme, timeline, t]
+  );
   if (timeline.length === 0) {
     return (
       <div className={styles.chartEmptyInline}>
@@ -998,6 +1192,7 @@ const weekdayLabelKeys = [
 
 function UsageHeatmapChart({ points }: { points: UsageHeatmapPoint[] }) {
   const { t } = useTranslation();
+  const chartTheme = useUsageChartTheme();
   const hours = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`);
   const weekdays = weekdayLabelKeys.map((key) => t(key));
   const data = buildUsageHeatmapChartData(points);
@@ -1008,27 +1203,30 @@ function UsageHeatmapChart({ points }: { points: UsageHeatmapPoint[] }) {
     grid: { bottom: 28, containLabel: true, left: 8, right: 14, top: 10 },
     tooltip: {
       appendToBody: true,
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: '#dbe3ef',
+      ...getTooltipOption(chartTheme),
       borderRadius: 10,
       borderWidth: 1,
       confine: true,
       formatter: (params: unknown) => {
         const item = params as { value?: number[] };
         const [hour, weekday, calls, cost, failureRate] = item.value ?? [];
-        return `<div class="${styles.echartsTooltip}"><b>${escapeHtml(
-          `${weekdays[weekday] ?? ''} ${hours[hour] ?? ''}`
-        )}</b><div class="${styles.echartsTooltipRow}"><span>${escapeHtml(
-          t('usage_analytics.metric_request_count')
-        )}</span><strong>${escapeHtml(
-          compactNumber(calls ?? 0)
-        )}</strong></div><div class="${styles.echartsTooltipRow}"><span>${escapeHtml(
-          t('usage_analytics.metric_estimated_cost')
-        )}</span><strong>${escapeHtml(
-          formatMetricValue('estimatedCost', cost ?? 0)
-        )}</strong></div><div class="${styles.echartsTooltipRow}"><span>${escapeHtml(
-          t('usage_analytics.failure_rate')
-        )}</span><strong>${escapeHtml(formatPercent(failureRate ?? 0))}</strong></div></div>`;
+        return tooltipHtml(
+          chartTheme,
+          `${tooltipRowHtml(
+            chartTheme,
+            escapeHtml(t('usage_analytics.metric_request_count')),
+            escapeHtml(compactNumber(calls ?? 0))
+          )}${tooltipRowHtml(
+            chartTheme,
+            escapeHtml(t('usage_analytics.metric_estimated_cost')),
+            escapeHtml(formatMetricValue('estimatedCost', cost ?? 0))
+          )}${tooltipRowHtml(
+            chartTheme,
+            escapeHtml(t('usage_analytics.failure_rate')),
+            escapeHtml(formatPercent(failureRate ?? 0))
+          )}`,
+          escapeHtml(`${weekdays[weekday] ?? ''} ${hours[hour] ?? ''}`)
+        );
       },
       padding: 0,
     },
@@ -1036,22 +1234,22 @@ function UsageHeatmapChart({ points }: { points: UsageHeatmapPoint[] }) {
       bottom: 0,
       calculable: true,
       dimension: 2,
-      inRange: { color: ['#e0f2fe', '#38bdf8', '#2563eb', '#7c3aed'] },
+      inRange: { color: chartTheme.heatmapColors },
       left: 'center',
       max: maxValue,
       min: 0,
       orient: 'horizontal',
-      textStyle: { color: '#64748b', fontSize: 11 },
+      textStyle: { color: chartTheme.surface.axisLabel, fontSize: 11 },
     },
     xAxis: {
-      axisLabel: { color: '#64748b', fontSize: 10 },
+      axisLabel: { color: chartTheme.surface.axisLabel, fontSize: 10 },
       axisTick: { show: false },
       data: hours,
       splitArea: { show: true },
       type: 'category',
     },
     yAxis: {
-      axisLabel: { color: '#64748b', fontSize: 11, fontWeight: 700 },
+      axisLabel: { color: chartTheme.surface.axisLabel, fontSize: 11, fontWeight: 700 },
       axisTick: { show: false },
       data: weekdays,
       splitArea: { show: true },
@@ -1061,8 +1259,10 @@ function UsageHeatmapChart({ points }: { points: UsageHeatmapPoint[] }) {
       {
         data,
         encode: { x: 0, y: 1, value: 2, tooltip: [2, 3, 4] },
-        emphasis: { itemStyle: { borderColor: '#0f172a', borderWidth: 1 } },
-        itemStyle: { borderColor: '#ffffff', borderWidth: 1 },
+        emphasis: {
+          itemStyle: { borderColor: chartTheme.surface.heatmapEmphasisBorder, borderWidth: 1 },
+        },
+        itemStyle: { borderColor: chartTheme.surface.heatmapCellBorder, borderWidth: 1 },
         label: { show: false },
         name: t('usage_analytics.heatmap_title'),
         type: 'heatmap',
@@ -1091,24 +1291,31 @@ function UsageHeatmapChart({ points }: { points: UsageHeatmapPoint[] }) {
 
 function TokenStructureChart({ timeline }: { timeline: UsageTimelinePoint[] }) {
   const { t } = useTranslation();
+  const chartTheme = useUsageChartTheme();
+  const tokenBarItemStyle = useMemo(
+    () => ({
+      borderColor: chartTheme.surface.pieBorder,
+      borderWidth: 1,
+    }),
+    [chartTheme]
+  );
   const option = useMemo<TokenStructureChartOption>(
     () => ({
       animationDuration: 260,
       backgroundColor: 'transparent',
-      color: ['#2563eb', '#0ea5a7', '#8b5cf6', '#f97316'],
+      color: chartTheme.tokenStructureColors,
       grid: { bottom: 34, containLabel: true, left: 8, right: 18, top: 18 },
       legend: {
         bottom: 0,
         icon: 'circle',
         itemHeight: 8,
         itemWidth: 8,
-        textStyle: { color: '#64748b', fontSize: 12, fontWeight: 700 },
+        textStyle: { color: chartTheme.surface.axisLabel, fontSize: 12, fontWeight: 700 },
       },
       tooltip: {
         appendToBody: true,
         axisPointer: { type: 'shadow' },
-        backgroundColor: 'rgba(255,255,255,0.96)',
-        borderColor: '#dbe3ef',
+        ...getTooltipOption(chartTheme),
         borderRadius: 10,
         borderWidth: 1,
         confine: true,
@@ -1120,54 +1327,71 @@ function TokenStructureChart({ timeline }: { timeline: UsageTimelinePoint[] }) {
           const rows = items
             .map((item) => {
               const entry = item as { marker?: string; seriesName?: string; data?: number };
-              return `<div class="${styles.echartsTooltipRow}"><span>${entry.marker ?? ''}${escapeHtml(entry.seriesName)}</span><strong>${escapeHtml(compactNumber(Number(entry.data ?? 0)))}</strong></div>`;
+              return tooltipRowHtml(
+                chartTheme,
+                `${entry.marker ?? ''}${escapeHtml(entry.seriesName)}`,
+                escapeHtml(compactNumber(Number(entry.data ?? 0)))
+              );
             })
             .join('');
-          return `<div class="${styles.echartsTooltip}"><b>${escapeHtml(point?.label)}</b>${rows}</div>`;
+          return tooltipHtml(chartTheme, rows, escapeHtml(point?.label));
         },
         padding: 0,
         trigger: 'axis',
       },
       xAxis: {
-        axisLabel: { color: '#64748b', fontSize: 11, fontWeight: 700, hideOverlap: true },
-        axisLine: { lineStyle: { color: '#e2e8f0' } },
+        axisLabel: {
+          color: chartTheme.surface.axisLabel,
+          fontSize: 11,
+          fontWeight: 700,
+          hideOverlap: true,
+        },
+        axisLine: { lineStyle: { color: chartTheme.surface.axisLine } },
         axisTick: { show: false },
         data: timeline.map((point) => point.label),
         type: 'category',
       },
       yAxis: {
-        axisLabel: { color: '#64748b', formatter: compactNumber },
-        splitLine: { lineStyle: { color: '#e8edf5', type: 'dashed' } },
+        axisLabel: { color: chartTheme.surface.axisLabel, formatter: compactNumber },
+        splitLine: { lineStyle: { color: chartTheme.surface.splitLine, type: 'dashed' } },
         type: 'value',
       },
       series: [
         {
+          barMaxWidth: 22,
           data: timeline.map((point) => point.inputTokens),
+          itemStyle: tokenBarItemStyle,
           name: t('usage_analytics.metric_input_tokens'),
           stack: 'tokens',
           type: 'bar',
         },
         {
+          barMaxWidth: 22,
           data: timeline.map((point) => point.outputTokens),
+          itemStyle: tokenBarItemStyle,
           name: t('usage_analytics.metric_output_tokens'),
           stack: 'tokens',
           type: 'bar',
         },
         {
+          barMaxWidth: 22,
           data: timeline.map((point) => point.cachedTokens),
+          itemStyle: tokenBarItemStyle,
           name: t('usage_analytics.metric_cached_tokens'),
           stack: 'tokens',
           type: 'bar',
         },
         {
+          barMaxWidth: 22,
           data: timeline.map((point) => point.reasoningTokens),
+          itemStyle: tokenBarItemStyle,
           name: t('usage_analytics.metric_reasoning_tokens'),
           stack: 'tokens',
           type: 'bar',
         },
       ],
     }),
-    [t, timeline]
+    [chartTheme, t, timeline, tokenBarItemStyle]
   );
 
   if (timeline.length === 0) {
@@ -1197,24 +1421,26 @@ function EntityTrendChart({
   series: UsageEntityTrendSeries[];
 }) {
   const { t } = useTranslation();
+  const chartTheme = useUsageChartTheme();
   const option = useMemo<EntityTrendChartOption>(
     () => ({
       animationDuration: 260,
       backgroundColor: 'transparent',
-      color: series.map((item) => item.color),
+      color: series.map(
+        (_, index) => chartTheme.categoryPalette[index % chartTheme.categoryPalette.length]
+      ),
       grid: { bottom: 34, containLabel: true, left: 8, right: 18, top: 18 },
       legend: {
         bottom: 0,
         icon: 'circle',
         itemHeight: 8,
         itemWidth: 8,
-        textStyle: { color: '#64748b', fontSize: 12, fontWeight: 700 },
+        textStyle: { color: chartTheme.surface.axisLabel, fontSize: 12, fontWeight: 700 },
       },
       tooltip: {
         appendToBody: true,
         axisPointer: { type: 'line' },
-        backgroundColor: 'rgba(255,255,255,0.96)',
-        borderColor: '#dbe3ef',
+        ...getTooltipOption(chartTheme),
         borderRadius: 10,
         borderWidth: 1,
         confine: true,
@@ -1223,17 +1449,26 @@ function EntityTrendChart({
           const rows = items
             .map((item) => {
               const entry = item as { marker?: string; seriesName?: string; data?: number };
-              return `<div class="${styles.echartsTooltipRow}"><span>${entry.marker ?? ''}${escapeHtml(entry.seriesName)}</span><strong>${escapeHtml(formatTrendMetricValue(metric, Number(entry.data ?? 0)))}</strong></div>`;
+              return tooltipRowHtml(
+                chartTheme,
+                `${entry.marker ?? ''}${escapeHtml(entry.seriesName)}`,
+                escapeHtml(formatTrendMetricValue(metric, Number(entry.data ?? 0)))
+              );
             })
             .join('');
-          return `<div class="${styles.echartsTooltip}">${rows}</div>`;
+          return tooltipHtml(chartTheme, rows);
         },
         padding: 0,
         trigger: 'axis',
       },
       xAxis: {
-        axisLabel: { color: '#64748b', fontSize: 11, fontWeight: 700, hideOverlap: true },
-        axisLine: { lineStyle: { color: '#e2e8f0' } },
+        axisLabel: {
+          color: chartTheme.surface.axisLabel,
+          fontSize: 11,
+          fontWeight: 700,
+          hideOverlap: true,
+        },
+        axisLine: { lineStyle: { color: chartTheme.surface.axisLine } },
         axisTick: { show: false },
         boundaryGap: false,
         data: series[0]?.points.map((point) => point.label) ?? [],
@@ -1241,22 +1476,25 @@ function EntityTrendChart({
       },
       yAxis: {
         axisLabel: {
-          color: '#64748b',
+          color: chartTheme.surface.axisLabel,
           formatter: (value: number) => formatTrendMetricValue(metric, value),
         },
-        splitLine: { lineStyle: { color: '#e8edf5', type: 'dashed' } },
+        splitLine: { lineStyle: { color: chartTheme.surface.splitLine, type: 'dashed' } },
         type: 'value',
       },
-      series: series.map((item) => ({
+      series: series.map((item, index) => ({
         data: item.points.map((point) => point.value),
-        lineStyle: { color: item.color, width: 2.3 },
+        lineStyle: {
+          color: chartTheme.categoryPalette[index % chartTheme.categoryPalette.length],
+          width: 2.3,
+        },
         name: item.label,
         showSymbol: item.points.length <= 36,
         smooth: 0.25,
         type: 'line',
       })),
     }),
-    [metric, series]
+    [chartTheme, metric, series]
   );
 
   if (series.length === 0) {
@@ -1512,6 +1750,7 @@ function ProviderHealthPanel({ rows }: { rows: UsageProviderRow[] }) {
 
 function ProviderSharePanel({ rows }: { rows: UsageProviderRow[] }) {
   const { t } = useTranslation();
+  const chartTheme = useUsageChartTheme();
   return (
     <div className={styles.providerShareList}>
       {rows.length === 0 ? (
@@ -1520,9 +1759,20 @@ function ProviderSharePanel({ rows }: { rows: UsageProviderRow[] }) {
           <span>{t('usage_analytics.empty_title')}</span>
         </div>
       ) : (
+  const getOverviewDelta = (key: UsageMetricKey): number | null => {
+    if (!usage.summaryDelta.hasComparison) return null;
+    if (!overviewDeltaKeys.includes(key)) return null;
+    return usage.summaryDelta[key as 'requestCount' | 'totalTokens' | 'estimatedCost'];
+  };
+
         rows.slice(0, 6).map((row, index) => (
           <span key={row.id}>
-            <i style={{ backgroundColor: pieColors[index % pieColors.length] }} />
+            <i
+              style={{
+                backgroundColor:
+                  chartTheme.categoryPalette[index % chartTheme.categoryPalette.length],
+              }}
+            />
             <b>{row.label}</b>
             <em>{formatPercent(row.share)}</em>
           </span>
@@ -1531,6 +1781,8 @@ function ProviderSharePanel({ rows }: { rows: UsageProviderRow[] }) {
     </div>
   );
 }
+  const trendAverageBucketRequests =
+    usage.timeline.length > 0 ? usage.summary.requestCount / usage.timeline.length : 0;
 
 function HotCombinationsPanel({ matrix }: { matrix: UsageMatrix }) {
   const { t } = useTranslation();
@@ -1573,6 +1825,8 @@ function UsageAnalyticsPageInner() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const usage = useUsageAnalytics();
+  const chartTheme = useUsageChartTheme();
+  const themedUsageMetrics = useMemo(() => getThemedUsageMetrics(chartTheme), [chartTheme]);
   const [selectedMetrics, setSelectedMetrics] =
     useState<UsageMetricKey[]>(DEFAULT_SELECTED_METRICS);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -1759,12 +2013,6 @@ function UsageAnalyticsPageInner() {
     [usage.providerRows]
   );
 
-  const getOverviewDelta = (key: UsageMetricKey): number | null => {
-    if (!usage.summaryDelta.hasComparison) return null;
-    if (!overviewDeltaKeys.includes(key)) return null;
-    return usage.summaryDelta[key as 'requestCount' | 'totalTokens' | 'estimatedCost'];
-  };
-
   const overviewAnomalySummary = useMemo(
     () => summarizeAnomalies(usage.anomalyPoints, { minRequests: 10, limit: 3 }),
     [usage.anomalyPoints]
@@ -1781,8 +2029,6 @@ function UsageAnalyticsPageInner() {
     () => getMaxTimelineMs(usage.timeline, (point) => point.p95LatencyMs),
     [usage.timeline]
   );
-  const trendAverageBucketRequests =
-    usage.timeline.length > 0 ? usage.summary.requestCount / usage.timeline.length : 0;
 
   const toggleMetric = (key: UsageMetricKey) => {
     setSelectedMetrics((current) =>
@@ -2173,7 +2419,7 @@ function UsageAnalyticsPageInner() {
               </div>
             </div>
             <div className={styles.metricChips}>
-              {USAGE_METRICS.map((metric) => (
+              {themedUsageMetrics.map((metric) => (
                 <button
                   key={metric.key}
                   type="button"
