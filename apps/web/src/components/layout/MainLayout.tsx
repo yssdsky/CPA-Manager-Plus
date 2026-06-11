@@ -366,12 +366,6 @@ export function MainLayout() {
             icon: sidebarIcons.monitoring,
             exact: true,
           },
-          {
-            path: '/monitoring/account-actions',
-            label: t('nav.account_actions'),
-            shortLabel: navShortLabel('nav.account_actions', t('nav.account_actions')),
-            icon: sidebarIcons.monitoring,
-          },
         ]
       : []),
     ...(fileLogsAvailable
