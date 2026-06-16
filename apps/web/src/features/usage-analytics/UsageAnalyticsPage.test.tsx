@@ -730,6 +730,7 @@ describe('UsageAnalyticsPage', () => {
     expect(text).not.toContain('usage_analytics.heatmap_range_label');
     expect(text).toContain('usage_analytics.heatmap_focus_title');
     expect(text).toContain('usage_analytics.heatmap_peak_requests');
+    expect(text).toContain('#1');
     expect(text).not.toContain('usage_analytics.insights_title');
     expect(text).not.toContain('usage_analytics.insight_heatmap_failure_window');
     expect(text).not.toContain('usage_analytics.heatmap_matrix_title');
@@ -748,6 +749,9 @@ describe('UsageAnalyticsPage', () => {
 
     clickHostButton(findHostButtonByText(renderer, 'usage_analytics.heatmap_metric_totalTokens'));
     expect(usageState.setHeatmapMetric).toHaveBeenCalledWith('totalTokens');
+
+    clickHostButton(findHostButtonByText(renderer, '#1'));
+    expect(usageState.selectHeatmapCell).toHaveBeenCalledWith({ weekday: 1, hour: 9 });
   });
 
   it('renders selected heatmap contributors with masked API keys', () => {
@@ -828,6 +832,11 @@ describe('UsageAnalyticsPage', () => {
 
     expect(text).toContain('usage_analytics.heatmap_date_all');
     expect(text).toContain('06/08');
+    expect(text).not.toContain('usage_analytics.heatmap_date_window_count');
+    expect(text).toContain('usage_analytics.heatmap_detail_summary_meta');
+    expect(text).toContain('usage_analytics.heatmap_rank');
+    expect(text).toContain('usage_analytics.heatmap_compare_average_value');
+    expect(text).toContain('usage_analytics.heatmap_compare_even');
     expect(text).toContain('usage_analytics.heatmap_contributors_title');
     expect(text).toContain('gpt-4o');
     expect(text).toContain('sk-****7890');

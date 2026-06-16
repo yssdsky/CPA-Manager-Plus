@@ -1756,11 +1756,62 @@
   gap: 16px;
 }
 
+.heatmapDetailHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+
+  > div:first-child {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  span {
+    color: var(--usage-muted);
+    font-size: 12px;
+    font-weight: 850;
+  }
+
+  h2 {
+    margin: 0;
+    color: var(--usage-text);
+    font-size: 20px;
+    font-weight: 880;
+    letter-spacing: 0;
+  }
+
+  p {
+    margin: 0;
+    color: var(--usage-muted);
+    font-size: 13px;
+    font-weight: 650;
+  }
+}
+
+.heatmapDetailHeroActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+
+  button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--usage-primary);
+    font-weight: 800;
+    cursor: pointer;
+  }
+}
+
 .heatmapDetailBody {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(420px, 1.05fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
   min-width: 0;
 }
@@ -1795,82 +1846,362 @@
 
 .heatmapDetailSummary {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 }
 
 .heatmapDetailMetrics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
+  min-width: 0;
+}
 
-  div {
-    display: grid;
-    gap: 5px;
-    min-width: 0;
-    padding: 12px;
-    border: 1px solid var(--usage-border);
-    border-radius: 12px;
-    background: var(--usage-muted-surface);
+.heatmapDetailMetricCard {
+  --heatmap-detail-accent: var(--usage-primary);
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 92px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--heatmap-detail-accent) 18%, var(--usage-border));
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--heatmap-detail-accent) 5%, var(--usage-surface));
+  box-shadow: var(--shadow);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.heatmapDetailMetricCard:hover {
+  border-color: color-mix(in srgb, var(--heatmap-detail-accent) 38%, var(--usage-border));
+  background: color-mix(in srgb, var(--heatmap-detail-accent) 7%, var(--usage-surface));
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+
+.heatmapDetailMetricHeader {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.heatmapDetailMetricIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--heatmap-detail-accent) 13%, transparent);
+  color: var(--heatmap-detail-accent);
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.heatmapDetailMetricLabel {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--usage-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatmapDetailMetricValue {
+  position: relative;
+  z-index: 1;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: auto;
+  overflow: hidden;
+  color: var(--usage-text);
+  font-size: 20px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatmapDetailMetricChart {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 0;
+  width: calc(48% - 8px);
+  min-width: 64px;
+  height: 26px;
+  color: var(--heatmap-detail-accent);
+  opacity: 0.5;
+  pointer-events: none;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
+  path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    opacity: 0.22;
+  }
+}
+
+.heatmapDetailMetricBlue {
+  --heatmap-detail-accent: #3b82f6;
+}
+
+.heatmapDetailMetricTeal {
+  --heatmap-detail-accent: #14b8a6;
+}
+
+.heatmapDetailMetricAmber {
+  --heatmap-detail-accent: #f59e0b;
+}
+
+.heatmapDetailMetricRed {
+  --heatmap-detail-accent: #ef4444;
+}
+
+.heatmapDetailMetricDanger {
+  color: var(--error-color);
+}
+
+.heatmapDetailMetricGood {
+  color: var(--success-color);
+}
+
+.heatmapComparisonPanel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--usage-primary) 12%, var(--usage-border));
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--usage-primary) 3%, var(--usage-surface));
+}
+
+.heatmapComparisonHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+
   span {
+    min-width: 0;
+    overflow: hidden;
     color: var(--usage-muted);
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   strong {
-    min-width: 0;
-    overflow: hidden;
     color: var(--usage-text);
     font-size: 18px;
-    font-weight: 850;
+    font-weight: 880;
     font-variant-numeric: tabular-nums;
-    text-overflow: ellipsis;
+    line-height: 1.1;
     white-space: nowrap;
   }
 }
 
 .heatmapComparisonList {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
 
-  div {
-    display: grid;
-    gap: 5px;
-    min-width: 0;
-    padding: 10px;
-    border: 1px solid var(--usage-border);
-    border-radius: 12px;
-    background: var(--usage-surface);
+.heatmapComparisonCard {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  min-height: 70px;
+  padding: 10px 10px 10px 13px;
+  overflow: hidden;
+  border: 1px solid var(--usage-border);
+  border-radius: 10px;
+  background: var(--usage-muted-surface);
+
+  &::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    content: '';
   }
 
-  span {
-    color: var(--usage-muted);
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  strong {
+  em {
     min-width: 0;
     overflow: hidden;
-    font-size: 15px;
+    color: var(--usage-muted);
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.heatmapComparisonLabel {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--usage-muted);
+  font-size: 12px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatmapComparisonValues {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+
+  strong,
+  b {
+    min-width: 0;
+    overflow: hidden;
     font-variant-numeric: tabular-nums;
+    line-height: 1.15;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  strong {
+    color: var(--usage-text);
+    font-size: 13px;
+    font-weight: 850;
+  }
+
+  b {
+    font-size: 14px;
+    font-weight: 880;
+  }
+}
+
+.heatmapComparisonAbove {
+  border-color: color-mix(in srgb, var(--usage-primary) 16%, var(--usage-border));
+
+  &::before {
+    background: var(--usage-primary);
+  }
+
+  b,
   em {
-    font-size: 12px;
-    font-style: normal;
-    font-weight: 800;
+    color: var(--usage-primary);
+  }
+}
+
+.heatmapComparisonBelow {
+  &::before {
+    background: var(--usage-muted);
+  }
+
+  b,
+  em {
+    color: var(--usage-muted);
+  }
+}
+
+.heatmapComparisonWarn {
+  border-color: color-mix(in srgb, #d97706 18%, var(--usage-border));
+
+  &::before {
+    background: #d97706;
+  }
+
+  b,
+  em {
+    color: #d97706;
+  }
+}
+
+.heatmapComparisonRisk {
+  border-color: color-mix(in srgb, #dc2626 18%, var(--usage-border));
+
+  &::before {
+    background: #dc2626;
+  }
+
+  b,
+  em {
+    color: #dc2626;
+  }
+}
+
+.heatmapComparisonGood {
+  border-color: color-mix(in srgb, var(--success-color) 16%, var(--usage-border));
+
+  &::before {
+    background: var(--success-color);
+  }
+
+  b,
+  em {
+    color: var(--success-color);
+  }
+}
+
+.heatmapComparisonEven {
+  &::before {
+    background: var(--usage-muted);
+  }
+
+  b,
+  em {
+    color: var(--usage-muted);
   }
 }
 
 .heatmapRankBadge {
-  background: color-mix(in srgb, var(--usage-primary) 8%, var(--usage-surface)) !important;
+  display: grid;
+  gap: 2px;
+  min-width: 92px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--usage-primary) 18%, var(--usage-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--usage-primary) 8%, var(--usage-surface));
+
+  span {
+    color: var(--usage-muted);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  strong {
+    color: var(--usage-text);
+    font-size: 14px;
+    font-weight: 880;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 .heatmapContributorSection {
@@ -1907,19 +2238,25 @@
 
   .heatmapContributorRow {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: center;
+    gap: 8px;
     min-width: 0;
     padding: 10px;
     border: 1px solid var(--usage-border);
     border-radius: 12px;
     background: var(--usage-muted-surface);
   }
+}
+
+.heatmapContributorMain {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 
   span {
     display: grid;
-    gap: 3px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
     min-width: 0;
   }
 
@@ -1947,14 +2284,17 @@
   }
 }
 
-.heatmapContributorCounts {
-  justify-items: end;
+.heatmapContributorProgress {
+  overflow: hidden;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--usage-border) 72%, transparent);
 
-  small {
-    color: var(--usage-muted);
-    font-size: 11px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--usage-primary);
   }
 }
 
@@ -1984,24 +2324,84 @@
     font-size: 13px;
     font-weight: 850;
   }
+}
 
-  div {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: center;
-    min-width: 0;
-    padding: 10px;
-    border: 1px solid var(--usage-border);
-    border-radius: 12px;
-    background: var(--usage-muted-surface);
+.heatmapHighlightCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  min-height: 62px;
+  padding: 10px 10px 10px 14px;
+  overflow: hidden;
+  border: 1px solid var(--usage-border);
+  border-radius: 12px;
+  background: var(--usage-muted-surface);
+  color: var(--usage-text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+
+  &::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 4px;
+    content: '';
   }
 
-  span {
+  &:hover {
+    border-color: color-mix(in srgb, var(--usage-primary) 24%, var(--usage-border));
+    background: color-mix(in srgb, var(--usage-primary) 4%, var(--usage-surface));
+    transform: none;
+  }
+
+  b {
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.heatmapHighlightCardRequest::before {
+  background: var(--usage-primary);
+}
+
+.heatmapHighlightCardCost::before {
+  background: #d97706;
+}
+
+.heatmapHighlightCardFailure::before {
+  background: #dc2626;
+}
+
+.heatmapHighlightCardSelected {
+  border-color: color-mix(in srgb, var(--usage-primary) 42%, var(--usage-border));
+  background: color-mix(in srgb, var(--usage-primary) 8%, var(--usage-surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--usage-primary) 16%, transparent) inset;
+}
+
+.heatmapHighlightRank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--usage-surface);
+  color: var(--usage-muted);
+  font-size: 12px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.heatmapHighlightMain {
     display: grid;
     gap: 3px;
     min-width: 0;
-  }
 
   strong,
   em {
@@ -2020,11 +2420,6 @@
     color: var(--usage-muted);
     font-size: 12px;
     font-style: normal;
-  }
-
-  b {
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -2177,6 +2572,10 @@
     grid-template-columns: 1fr;
   }
 
+  .heatmapDetailMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .anomalyMetrics div {
     border-right: 0;
     border-bottom: 1px solid var(--usage-border);
@@ -2241,7 +2640,8 @@
   .usageSummaryGrid,
   .advancedGrid,
   .advancedPanel,
-  .detailMetrics {
+  .detailMetrics,
+  .heatmapDetailMetrics {
     grid-template-columns: 1fr;
   }
 
@@ -2269,6 +2669,16 @@
 
   .heatmapDateTabs {
     width: 100%;
+  }
+
+  .heatmapDetailHero {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmapDetailHeroActions {
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-direction: column;
   }
 
   .heatmapDetailMetrics {

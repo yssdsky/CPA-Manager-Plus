@@ -20,8 +20,10 @@ import { Button } from '@/components/ui/Button';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { SegmentedTabs, type SegmentedTabItem } from '@/components/ui/SegmentedTabs';
 import {
+  IconBinary,
   IconCheck,
   IconCopy,
+  IconDollarSign,
   IconExternalLink,
   IconEye,
   IconFileText,
@@ -346,6 +348,12 @@ const formatPercent = (value: number) =>
 const formatDelta = (value: number) => {
   const sign = value > 0 ? '+' : '';
   return `${sign}${(value * 100).toFixed(1)}%`;
+};
+
+const formatHeatmapMetricDifference = (metric: UsageHeatmapMetricKey, value: number) => {
+  if (!Number.isFinite(value) || value === 0) return formatHeatmapMetricValue(metric, 0);
+  const sign = value > 0 ? '+' : '-';
+  return `${sign}${formatHeatmapMetricValue(metric, Math.abs(value))}`;
 };
 
 const formatHeatmapVisualValue = (
@@ -1867,40 +1875,47 @@ function HeatmapDateTabs({
 }
 
 function HeatmapContributorGroup({
+  emptyLabel,
   kind,
   rows,
   title,
 }: {
+  emptyLabel: string;
   kind: 'model' | 'apiKey' | 'provider';
   rows: UsageHeatmapContributor[];
   title: string;
 }) {
   const { t } = useTranslation();
-  if (rows.length === 0) return null;
   return (
     <div className={styles.heatmapContributorGroup}>
       <h3>{title}</h3>
-      {rows.map((row) => {
-        const label = kind === 'apiKey' ? maskApiKeyHash(row.key) : row.label || row.key;
-        return (
-          <div key={`${kind}-${row.key}`} className={styles.heatmapContributorRow}>
-            <span>
-              <strong>{label}</strong>
-              <em>
-                {t('usage_analytics.heatmap_contributor_meta', {
-                  cost: formatMetricValue('estimatedCost', row.estimatedCost),
-                  share: formatPercent(row.share),
-                  tokens: compactNumber(row.totalTokens),
-                })}
-              </em>
-            </span>
-            <span className={styles.heatmapContributorCounts}>
-              <b>{compactNumber(row.requestCount)}</b>
-              <small>{formatPercent(row.failureRate)}</small>
-            </span>
-          </div>
-        );
-      })}
+      {rows.length === 0 ? (
+        <span className={styles.shortcutEmpty}>{emptyLabel}</span>
+      ) : (
+        rows.map((row) => {
+          const label = kind === 'apiKey' ? maskApiKeyHash(row.key) : row.label || row.key;
+          return (
+            <div key={`${kind}-${row.key}`} className={styles.heatmapContributorRow}>
+              <div className={styles.heatmapContributorMain}>
+                <span>
+                  <strong>{label}</strong>
+                  <b>{compactNumber(row.requestCount)}</b>
+                </span>
+                <em>
+                  {t('usage_analytics.heatmap_contributor_meta', {
+                    cost: formatMetricValue('estimatedCost', row.estimatedCost),
+                    share: formatPercent(row.share),
+                    tokens: compactNumber(row.totalTokens),
+                  })}
+                </em>
+              </div>
+              <div className={styles.heatmapContributorProgress}>
+                <span style={{ width: `${Math.min(100, Math.max(0, row.share * 100))}%` }} />
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
@@ -1928,34 +1943,54 @@ function HeatmapDetailPanel({
   selectedDateKey: string;
   timeZone: string;
 }) {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
+  const detailNumberFormatter = useMemo(
+    () => new Intl.NumberFormat(i18n.language),
+    [i18n.language]
+  );
   const weekdays = weekdayLabelKeys.map((key) => t(key));
   const selectedWindowLabel = formatHeatmapWindowLabel(detail?.point ?? selectedCell, weekdays);
-  const metricLabel = t(`usage_analytics.heatmap_metric_${metric}`);
   const metrics = detail
     ? [
         {
-          label: metricLabel,
-          value: formatHeatmapMetricValue(metric, detail.metricValue),
-        },
-        {
+          accentClass: styles.heatmapDetailMetricBlue,
+          icon: <IconInbox size={18} />,
           label: t('usage_analytics.metric_request_count'),
+          title: detailNumberFormatter.format(detail.point.requestCount),
           value: compactNumber(detail.point.requestCount),
         },
         {
+          accentClass: styles.heatmapDetailMetricTeal,
+          icon: <IconBinary size={18} />,
           label: t('usage_analytics.metric_total_tokens'),
+          title: detailNumberFormatter.format(detail.point.totalTokens),
           value: compactNumber(detail.point.totalTokens),
         },
         {
+          accentClass: styles.heatmapDetailMetricAmber,
+          icon: <IconDollarSign size={18} />,
           label: t('usage_analytics.metric_estimated_cost'),
           value: formatMetricValue('estimatedCost', detail.point.estimatedCost),
         },
         {
+          accentClass: styles.heatmapDetailMetricRed,
+          icon: <IconX size={18} />,
           label: t('usage_analytics.metric_failure_count'),
+          title: detailNumberFormatter.format(detail.point.failureCount),
+          toneClass:
+            detail.point.failureCount > 0
+              ? styles.heatmapDetailMetricDanger
+              : styles.heatmapDetailMetricGood,
           value: compactNumber(detail.point.failureCount),
         },
         {
+          accentClass: styles.heatmapDetailMetricRed,
+          icon: <IconShield size={18} />,
           label: t('usage_analytics.failure_rate'),
+          toneClass:
+            detail.point.failureRate > 0
+              ? styles.heatmapDetailMetricDanger
+              : styles.heatmapDetailMetricGood,
           value: formatPercent(detail.point.failureRate),
         },
       ]
@@ -1964,17 +1999,17 @@ function HeatmapDetailPanel({
     ? [
         {
           label: t('usage_analytics.heatmap_compare_overall'),
-          value: detail.overallBaseline,
+          average: detail.overallBaseline,
           delta: detail.overallDelta,
         },
         {
           label: t('usage_analytics.heatmap_compare_weekday'),
-          value: detail.weekdayBaseline,
+          average: detail.weekdayBaseline,
           delta: detail.weekdayDelta,
         },
         {
           label: t('usage_analytics.heatmap_compare_hour'),
-          value: detail.hourBaseline,
+          average: detail.hourBaseline,
           delta: detail.hourDelta,
         },
       ]
@@ -1998,7 +2033,7 @@ function HeatmapDetailPanel({
         },
       ]
     : [];
-  const hasContributors = contributorGroups.some((group) => group.rows.length > 0);
+  const dateCount = dateOptions.length;
   let content: ReactNode;
 
   if (dateLoading && !detail) {
@@ -2027,8 +2062,8 @@ function HeatmapDetailPanel({
     content = (
       <div
         className={`${styles.heatmapDetailBody} ${
-          hasContributors ? '' : styles.heatmapDetailBodySingle
-        } ${dateLoading ? styles.heatmapDetailBodyRefreshing : ''}`}
+          dateLoading ? styles.heatmapDetailBodyRefreshing : ''
+        }`}
         aria-busy={dateLoading}
       >
         {dateLoading ? (
@@ -2040,64 +2075,123 @@ function HeatmapDetailPanel({
         <div className={styles.heatmapDetailSummary}>
           <div className={styles.heatmapDetailMetrics}>
             {metrics.map((item) => (
-              <div key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
+              <div
+                key={item.label}
+                className={`${styles.heatmapDetailMetricCard} ${item.accentClass}`}
+              >
+                <div className={styles.heatmapDetailMetricHeader}>
+                  <span className={styles.heatmapDetailMetricIcon}>{item.icon}</span>
+                  <span className={styles.heatmapDetailMetricLabel}>{item.label}</span>
+                </div>
+                <strong
+                  className={`${styles.heatmapDetailMetricValue} ${item.toneClass ?? ''}`}
+                  title={item.title ?? item.value}
+                >
+                  {item.value}
+                </strong>
+                <div className={styles.heatmapDetailMetricChart} aria-hidden="true">
+                  <svg viewBox="0 0 100 30" preserveAspectRatio="none">
+                    <path d="M0,24 C18,8 28,22 42,16 S67,4 82,13 S94,22 100,10" />
+                  </svg>
+                </div>
               </div>
             ))}
           </div>
-          <div className={styles.heatmapComparisonList}>
-            <div className={styles.heatmapRankBadge}>
-              <span>{t('usage_analytics.heatmap_rank')}</span>
-              <strong>
-                {detail.rank}/{detail.totalCells}
-              </strong>
+          <div className={styles.heatmapComparisonPanel}>
+            <div className={styles.heatmapComparisonHeader}>
+              <span>{t(`usage_analytics.heatmap_metric_${metric}`)}</span>
+              <strong>{formatHeatmapMetricValue(metric, detail.metricValue)}</strong>
             </div>
-            {comparisons.map((item) => (
-              <div key={item.label}>
-                <span>{item.label}</span>
-                <strong>{formatHeatmapMetricValue(metric, item.value)}</strong>
-                <em className={item.delta >= 0 ? styles.deltaUp : styles.deltaDown}>
-                  {formatDelta(item.delta)}
-                </em>
-              </div>
+            <div className={styles.heatmapComparisonList}>
+              {comparisons.map((item) => {
+                const direction =
+                  item.delta > 0
+                    ? 'above'
+                    : item.delta < 0
+                      ? 'below'
+                      : 'even';
+                const difference = detail.metricValue - item.average;
+                const directionClass =
+                  direction === 'even'
+                    ? styles.heatmapComparisonEven
+                    : metric === 'failureRate'
+                      ? direction === 'above'
+                        ? styles.heatmapComparisonRisk
+                        : styles.heatmapComparisonGood
+                      : metric === 'estimatedCost'
+                        ? direction === 'above'
+                          ? styles.heatmapComparisonWarn
+                          : styles.heatmapComparisonGood
+                        : direction === 'above'
+                          ? styles.heatmapComparisonAbove
+                          : styles.heatmapComparisonBelow;
+                return (
+                  <div
+                    key={item.label}
+                    className={`${styles.heatmapComparisonCard} ${directionClass}`}
+                  >
+                    <span className={styles.heatmapComparisonLabel}>{item.label}</span>
+                    <div className={styles.heatmapComparisonValues}>
+                      <strong>
+                        {t('usage_analytics.heatmap_compare_average_value', {
+                          value: formatHeatmapMetricValue(metric, item.average),
+                        })}
+                      </strong>
+                      <b>{formatHeatmapMetricDifference(metric, difference)}</b>
+                    </div>
+                    <em>
+                      {t(`usage_analytics.heatmap_compare_${direction}`)} {formatDelta(item.delta)}
+                    </em>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        <div className={styles.heatmapContributorSection}>
+          <h3>{t('usage_analytics.heatmap_contributors_title')}</h3>
+          <div className={styles.heatmapContributorGrid}>
+            {contributorGroups.map((group) => (
+              <HeatmapContributorGroup
+                key={group.kind}
+                emptyLabel={t('usage_analytics.heatmap_contributor_empty')}
+                kind={group.kind}
+                rows={group.rows}
+                title={group.title}
+              />
             ))}
           </div>
         </div>
-        {hasContributors ? (
-          <div className={styles.heatmapContributorSection}>
-            <h3>{t('usage_analytics.heatmap_contributors_title')}</h3>
-            <div className={styles.heatmapContributorGrid}>
-              {contributorGroups.map((group) => (
-                <HeatmapContributorGroup
-                  key={group.kind}
-                  kind={group.kind}
-                  rows={group.rows}
-                  title={group.title}
-                />
-              ))}
-            </div>
-          </div>
-        ) : null}
       </div>
     );
   }
 
   return (
     <div className={`${styles.panel} ${styles.heatmapDetailPanel}`}>
-      <div className={styles.panelHeader}>
+      <div className={styles.heatmapDetailHero}>
         <div>
-          <h2>{t('usage_analytics.heatmap_detail_title')}</h2>
+          <span>{t('usage_analytics.heatmap_detail_title')}</span>
+          <h2>{selectedWindowLabel}</h2>
           <p>
-            {t('usage_analytics.heatmap_detail_hint', {
-              time: selectedWindowLabel,
+            {t('usage_analytics.heatmap_detail_summary_meta', {
+              count: dateCount,
               timeZone,
             })}
           </p>
         </div>
-        <button type="button" onClick={onClear}>
-          {t('usage_analytics.heatmap_clear_selection')}
-        </button>
+        <div className={styles.heatmapDetailHeroActions}>
+          {detail ? (
+            <div className={styles.heatmapRankBadge}>
+              <span>{t('usage_analytics.heatmap_rank')}</span>
+              <strong>
+                {detail.rank}/{detail.totalCells}
+              </strong>
+            </div>
+          ) : null}
+          <button type="button" onClick={onClear}>
+            {t('usage_analytics.heatmap_clear_selection')}
+          </button>
+        </div>
       </div>
       <HeatmapDateTabs
         dateOptions={dateOptions}
@@ -2111,35 +2205,58 @@ function HeatmapDetailPanel({
 
 function HeatmapHighlightGroup({
   emptyLabel,
+  onSelect,
   rows,
+  selectedCell,
   title,
+  tone,
 }: {
   emptyLabel: string;
+  onSelect: (cell: UsageHeatmapCellSelection) => void;
   rows: UsageHeatmapHighlight[];
+  selectedCell: UsageHeatmapCellSelection | null;
   title: string;
+  tone: 'request' | 'cost' | 'failure';
 }) {
   const { t } = useTranslation();
   const weekdays = weekdayLabelKeys.map((key) => t(key));
+  const toneClass = {
+    cost: styles.heatmapHighlightCardCost,
+    failure: styles.heatmapHighlightCardFailure,
+    request: styles.heatmapHighlightCardRequest,
+  }[tone];
   return (
     <div className={styles.heatmapHighlightGroup}>
       <h3>{title}</h3>
       {rows.length === 0 ? (
         <span className={styles.shortcutEmpty}>{emptyLabel}</span>
       ) : (
-        rows.map((row) => (
-          <div key={row.id}>
-            <span>
-              <strong>{formatHeatmapWindowLabel(row.point, weekdays)}</strong>
-              <em>
-                {t('usage_analytics.heatmap_highlight_meta', {
-                  requests: compactNumber(row.point.requestCount),
-                  failures: compactNumber(row.point.failureCount),
-                })}
-              </em>
-            </span>
-            <b>{formatHeatmapMetricValue(row.metric, row.value)}</b>
-          </div>
-        ))
+        rows.map((row, index) => {
+          const selected =
+            selectedCell?.weekday === row.point.weekday && selectedCell.hour === row.point.hour;
+          return (
+            <button
+              key={row.id}
+              type="button"
+              className={`${styles.heatmapHighlightCard} ${toneClass} ${
+                selected ? styles.heatmapHighlightCardSelected : ''
+              }`}
+              onClick={() => onSelect({ weekday: row.point.weekday, hour: row.point.hour })}
+            >
+              <span className={styles.heatmapHighlightRank}>#{index + 1}</span>
+              <span className={styles.heatmapHighlightMain}>
+                <strong>{formatHeatmapWindowLabel(row.point, weekdays)}</strong>
+                <em>
+                  {t('usage_analytics.heatmap_highlight_meta', {
+                    requests: compactNumber(row.point.requestCount),
+                    failures: compactNumber(row.point.failureCount),
+                  })}
+                </em>
+              </span>
+              <b>{formatHeatmapMetricValue(row.metric, row.value)}</b>
+            </button>
+          );
+        })
       )}
     </div>
   );
@@ -2147,9 +2264,13 @@ function HeatmapHighlightGroup({
 
 function HeatmapHighlightsPanel({
   highlights,
+  onSelect,
+  selectedCell,
   timeZone,
 }: {
   highlights: UsageHeatmapHighlights;
+  onSelect: (cell: UsageHeatmapCellSelection) => void;
+  selectedCell: UsageHeatmapCellSelection | null;
   timeZone: string;
 }) {
   const { t } = useTranslation();
@@ -2166,16 +2287,25 @@ function HeatmapHighlightsPanel({
           title={t('usage_analytics.heatmap_peak_requests')}
           rows={highlights.requestPeaks}
           emptyLabel={t('usage_analytics.empty_title')}
+          onSelect={onSelect}
+          selectedCell={selectedCell}
+          tone="request"
         />
         <HeatmapHighlightGroup
           title={t('usage_analytics.heatmap_peak_cost')}
           rows={highlights.costPeaks}
           emptyLabel={t('usage_analytics.empty_title')}
+          onSelect={onSelect}
+          selectedCell={selectedCell}
+          tone="cost"
         />
         <HeatmapHighlightGroup
           title={t('usage_analytics.heatmap_peak_failure')}
           rows={highlights.failureRisks}
           emptyLabel={t('usage_analytics.heatmap_failure_sample_empty')}
+          onSelect={onSelect}
+          selectedCell={selectedCell}
+          tone="failure"
         />
       </div>
     </div>
@@ -3742,7 +3872,9 @@ function UsageAnalyticsPageInner() {
             ) : (
               <HeatmapHighlightsPanel
                 highlights={usage.heatmapHighlights}
+                selectedCell={usage.selectedHeatmapCell}
                 timeZone={usage.browserTimeZone}
+                onSelect={usage.selectHeatmapCell}
               />
             )}
           </section>
