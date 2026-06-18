@@ -881,6 +881,26 @@ export interface MonitoringAnalyticsApiKeyStatRow {
   average_latency_ms: number | null;
   last_seen_ms: number;
   models?: MonitoringAnalyticsAccountModelStatRow[];
+  contexts?: MonitoringAnalyticsApiKeyContextRow[];
+}
+
+export interface MonitoringAnalyticsApiKeyContextRow {
+  id: string;
+  account_snapshot?: string;
+  auth_label_snapshot?: string;
+  auth_provider_snapshot?: string;
+  auth_index?: string;
+  source?: string;
+  source_hash?: string;
+  calls: number;
+  success_calls: number;
+  failure_calls: number;
+  success_rate: number;
+  failure_rate: number;
+  total_tokens: number;
+  cost: number;
+  average_latency_ms?: number | null;
+  last_seen_ms: number;
 }
 
 export interface MonitoringAnalyticsFilterOptions {
@@ -1266,7 +1286,10 @@ export const usageServiceApi = {
     });
   },
 
-  getAccountProcessingPolicy: async (base: string, managementKey?: string): Promise<AccountProcessingPolicy> => {
+  getAccountProcessingPolicy: async (
+    base: string,
+    managementKey?: string
+  ): Promise<AccountProcessingPolicy> => {
     return withUsageServiceError(async () => {
       const response = await axios.get<AccountProcessingPolicy>(
         buildUrl(base, '/usage-service/account-processing-policy'),

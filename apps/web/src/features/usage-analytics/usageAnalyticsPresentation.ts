@@ -27,13 +27,7 @@ export type UsageSummaryCardIcon =
   | 'tokens'
   | 'trend';
 
-export type UsageSummaryCardAccent =
-  | 'amber'
-  | 'blue'
-  | 'cyan'
-  | 'green'
-  | 'red'
-  | 'teal';
+export type UsageSummaryCardAccent = 'amber' | 'blue' | 'cyan' | 'green' | 'red' | 'teal';
 
 export type UsageSummaryCardTone = 'bad' | 'good' | 'warn';
 
@@ -641,9 +635,10 @@ export const buildCredentialDetailCards = ({
       accent: 'blue',
       icon: 'latency',
       label: t('usage_analytics.metric_average_latency'),
-      meta: row.averageLatencyMs === null || row.averageLatencyMs === undefined
-        ? t('usage_analytics.summary_meta')
-        : `${t('usage_analytics.summary_meta')}`,
+      meta:
+        row.averageLatencyMs === null || row.averageLatencyMs === undefined
+          ? t('usage_analytics.summary_meta')
+          : `${t('usage_analytics.summary_meta')}`,
       value: formatUsageDurationMs(row.averageLatencyMs),
     },
     {

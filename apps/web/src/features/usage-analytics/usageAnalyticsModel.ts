@@ -121,6 +121,24 @@ export type UsageSummaryDelta = {
   estimatedCost: number;
 };
 
+export type UsageApiKeyContextRow = {
+  id: string;
+  provider?: string;
+  account?: string;
+  authIndex?: string;
+  source?: string;
+  sourceHash?: string;
+  requestCount: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  failureRate: number;
+  totalTokens: number;
+  estimatedCost: number;
+  averageLatencyMs: number | null;
+  lastSeenMs?: number;
+};
+
 export type UsageRankRow = {
   id: string;
   label: string;
@@ -147,6 +165,7 @@ export type UsageRankRow = {
   averageLatencyMs: number | null;
   lastSeenMs?: number;
   share: number;
+  contexts?: UsageApiKeyContextRow[];
   models?: UsageRankRow[];
 };
 
@@ -1128,6 +1147,30 @@ const buildModelSpendRows = (
     share: 0,
   }));
 
+const buildApiKeyContextRows = (
+  rows: NonNullable<MonitoringAnalyticsApiKeyStatRow['contexts']> | undefined
+): UsageApiKeyContextRow[] =>
+  (rows ?? []).map((row) => ({
+    id: row.id || '-',
+    provider: row.auth_provider_snapshot,
+    account: row.account_snapshot || row.auth_label_snapshot,
+    authIndex: row.auth_index,
+    source: row.source,
+    sourceHash: row.source_hash,
+    requestCount: toNumber(row.calls),
+    successCount: toNumber(row.success_calls),
+    failureCount: toNumber(row.failure_calls),
+    successRate: toNumber(row.success_rate),
+    failureRate:
+      row.failure_rate === undefined
+        ? safeShare(toNumber(row.failure_calls), toNumber(row.calls))
+        : toNumber(row.failure_rate),
+    totalTokens: toNumber(row.total_tokens),
+    estimatedCost: toNumber(row.cost),
+    averageLatencyMs: row.average_latency_ms ?? null,
+    lastSeenMs: row.last_seen_ms,
+  }));
+
 export const buildApiKeyRows = (
   rows: MonitoringAnalyticsApiKeyStatRow[] = [],
   summary?: UsageSummaryMetrics,
@@ -1175,6 +1218,7 @@ export const buildApiKeyRows = (
             : totalTokens > 0
               ? toNumber(row.total_tokens) / totalTokens
               : 0,
+        contexts: buildApiKeyContextRows(row.contexts),
         models: buildModelSpendRows(row.models),
       };
     })
@@ -1526,6 +1570,36 @@ const usageCredentialTimelineMetricValue = (
   if (metric === 'estimatedCost') return point.estimatedCost;
   if (metric === 'totalTokens') return point.totalTokens;
   return point.requestCount;
+};
+
+const usageTimelineMetricValue = (point: UsageTimelinePoint, metric: UsageTrendMetricKey) => {
+  if (metric === 'estimatedCost') return point.estimatedCost;
+  if (metric === 'totalTokens') return point.totalTokens;
+  return point.requestCount;
+};
+
+export const buildSelectedApiKeyTrendSeries = (
+  selectedApiKey: UsageRankRow | null,
+  timeline: UsageTimelinePoint[],
+  metric: UsageTrendMetricKey
+): UsageEntityTrendSeries[] => {
+  if (!selectedApiKey || timeline.length === 0) return [];
+
+  return [
+    {
+      id: selectedApiKey.apiKeyHash || selectedApiKey.id,
+      label: selectedApiKey.label,
+      color: '#2563eb',
+      points: timeline
+        .slice()
+        .sort((left, right) => left.bucketMs - right.bucketMs)
+        .map((point) => ({
+          bucketMs: point.bucketMs,
+          label: point.label,
+          value: usageTimelineMetricValue(point, metric),
+        })),
+    },
+  ];
 };
 
 export const buildSelectedCredentialTrendSeries = (

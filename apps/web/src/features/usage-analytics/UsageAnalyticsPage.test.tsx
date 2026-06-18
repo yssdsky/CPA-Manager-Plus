@@ -122,6 +122,32 @@ const createUsageState = (overrides: Record<string, unknown> = {}) => {
     label: 'sk-****7890',
     apiKeyHash: 'abcdef1234567890',
     model: undefined,
+    provider: 'codex',
+    account: 'team-alpha',
+    authIndex: 'auth-1',
+    source: 'source-a',
+    sourceHash: 'source-hash-a',
+    averageLatencyMs: 250,
+    lastSeenMs: point.bucketMs,
+    contexts: [
+      {
+        id: 'context-a',
+        provider: 'codex',
+        account: 'team-alpha',
+        authIndex: 'auth-1',
+        source: 'source-a',
+        sourceHash: 'source-hash-a',
+        requestCount: 12,
+        successCount: 11,
+        failureCount: 1,
+        successRate: 11 / 12,
+        failureRate: 1 / 12,
+        totalTokens: 1200,
+        estimatedCost: 1.25,
+        averageLatencyMs: 250,
+        lastSeenMs: point.bucketMs,
+      },
+    ],
     models: [
       createRankRow({
         id: 'gpt-4o',
@@ -328,6 +354,14 @@ const createUsageState = (overrides: Record<string, unknown> = {}) => {
       },
     ],
     apiKeyTrendSeries: [
+      {
+        id: 'abcdef1234567890',
+        label: 'sk-****7890',
+        color: '#2563eb',
+        points: [{ bucketMs: point.bucketMs, label: point.label, value: 12 }],
+      },
+    ],
+    selectedApiKeyTrendSeries: [
       {
         id: 'abcdef1234567890',
         label: 'sk-****7890',
@@ -648,7 +682,8 @@ describe('UsageAnalyticsPage', () => {
   });
 
   it('renders the API Key tab with key-dimension cards, unit-economics columns, and anomaly drilldown', () => {
-    mocks.usageState = createUsageState({ activeTab: 'apiKeys' });
+    const usageState = createUsageState({ activeTab: 'apiKeys' });
+    mocks.usageState = usageState;
     const renderer = renderPage();
     const text = getText(renderer.root);
 
@@ -662,10 +697,26 @@ describe('UsageAnalyticsPage', () => {
     // Rank table gains the model-tab unit-economics columns.
     expect(text).toContain('usage_analytics.cache_read_rate');
     expect(text).toContain('usage_analytics.metric_failure_count');
+    expect(text).toContain('usage_analytics.api_key_compare_title');
+    expect(text).not.toContain('usage_analytics.entity_trend_title');
 
-    // Detail panel stays unit-economics only, plus the related model distribution.
+    // Detail panel keeps execution contexts and does not repeat the client key hash card.
     expect(text).toContain('usage_analytics.api_key_detail_title');
-    expect(text).toContain('usage_analytics.average_tokens_per_request');
+    expect(text).not.toContain('usage_analytics.client_key_hash');
+    expect(text).toContain('usage_analytics.api_key_context_title');
+    expect(text).not.toContain('usage_analytics.api_key_identity_masked_key');
+    expect(text).not.toContain('usage_analytics.api_key_identity_provider');
+    expect(text).not.toContain('usage_analytics.api_key_identity_account');
+    expect(text).not.toContain('usage_analytics.api_key_identity_auth_index');
+    expect(text).not.toContain('usage_analytics.api_key_identity_source');
+    expect(text).not.toContain('usage_analytics.api_key_identity_source_hash');
+    expect(text).toContain('codex');
+    expect(text).toContain('team-alpha');
+    expect(text).toContain('auth-1');
+    expect(text).toContain('source-a');
+    expect(text).toContain('source-hash-a');
+    expect(text).not.toContain('usage_analytics.average_tokens_per_request');
+    expect(text).not.toContain('usage_analytics.api_key_last_seen');
     expect(text).toContain('usage_analytics.related_model_distribution');
 
     // Anomaly rows drill down into monitoring scoped to the key.
@@ -673,8 +724,21 @@ describe('UsageAnalyticsPage', () => {
       .findAllByType('button')
       .filter((node) => getText(node) === 'usage_analytics.view_request_details');
     expect(drilldownButtons.length).toBeGreaterThan(0);
+    clickHostButton(drilldownButtons[0]);
+    expect(mocks.navigate).toHaveBeenCalledWith(
+      '/monitoring?from_ms=1780000000000&to_ms=1780003600000&api_key_hash=abcdef1234567890'
+    );
+
     clickHostButton(drilldownButtons[drilldownButtons.length - 1]);
-    expect(mocks.navigate).toHaveBeenCalledWith('/monitoring?api_key_hash=abcdef1234567890');
+    expect(mocks.navigate).toHaveBeenCalledWith(
+      '/monitoring?from_ms=1780000000000&to_ms=1780003600000&api_key_hash=abcdef1234567890&status=failed'
+    );
+
+    clickHostButton(findHostButtonByText(renderer, 'usage_analytics.view_exception_combinations'));
+    expect(usageState.setFilters).toHaveBeenCalledWith({
+      apiKeyHash: 'abcdef1234567890',
+    });
+    expect(usageState.setActiveTab).toHaveBeenCalledWith('heatmap');
   });
 
   it('renders the models tab with unit-economics columns and model-scoped insights only', () => {

@@ -4,6 +4,7 @@ import type { UsageRankRow } from './usageAnalyticsModel';
 import {
   analyzeUsageBucket,
   buildApiKeyRows,
+  buildSelectedApiKeyTrendSeries,
   buildSelectedCredentialTrendSeries,
   buildDrilldownPreview,
   buildKeyAnomalies,
@@ -414,6 +415,80 @@ describe('usage analytics adapters', () => {
     expect(buildSelectedCredentialTrendSeries(row, [], 'requestCount')).toEqual([]);
   });
 
+  it('builds selected API key trend from the filtered timeline without estimating share', () => {
+    const row: UsageRankRow = {
+      id: 'abcdef1234567890',
+      label: 'sk-****7890',
+      apiKeyHash: 'abcdef1234567890',
+      requestCount: 10,
+      successCount: 9,
+      failureCount: 1,
+      successRate: 0.9,
+      totalTokens: 700,
+      inputTokens: 700,
+      outputTokens: 0,
+      cachedTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      estimatedCost: 0.7,
+      averageLatencyMs: null,
+      share: 0.25,
+    };
+    const timeline = buildUsageTimeline(
+      [
+        {
+          bucket_ms: NOW_MS + HOUR_MS,
+          label: '13:00',
+          calls: 7,
+          tokens: 500,
+          total_tokens: 500,
+          success: 6,
+          failure: 1,
+          cost: 0.5,
+        },
+        {
+          bucket_ms: NOW_MS,
+          label: '12:00',
+          calls: 3,
+          tokens: 200,
+          total_tokens: 200,
+          success: 3,
+          failure: 0,
+          cost: 0.2,
+        },
+      ],
+      'hour'
+    );
+
+    const result = buildSelectedApiKeyTrendSeries(row, timeline, 'requestCount');
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('abcdef1234567890');
+    expect(result[0].points.map((point) => point.value)).toEqual([3, 7]);
+  });
+
+  it('does not render selected API key trend when the filtered timeline is missing', () => {
+    const row = {
+      id: 'abcdef1234567890',
+      label: 'sk-****7890',
+      requestCount: 0,
+      successCount: 0,
+      failureCount: 0,
+      successRate: 0,
+      totalTokens: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      cachedTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      estimatedCost: 0,
+      averageLatencyMs: null,
+      share: 0,
+    };
+
+    expect(buildSelectedApiKeyTrendSeries(row, [], 'requestCount')).toEqual([]);
+  });
+
   it('filters API key rows by keyword and never exposes a raw key value', () => {
     const data: Pick<MonitoringAnalyticsResponse, 'api_key_stats'> = {
       api_key_stats: [
@@ -435,6 +510,25 @@ describe('usage analytics adapters', () => {
           cost: 1.25,
           average_latency_ms: null,
           last_seen_ms: NOW_MS,
+          contexts: [
+            {
+              id: 'ctx-a',
+              account_snapshot: 'team-alpha',
+              auth_provider_snapshot: 'codex',
+              auth_index: 'auth-1',
+              source: 'source-a',
+              source_hash: 'source-hash-a',
+              calls: 10,
+              success_calls: 9,
+              failure_calls: 1,
+              success_rate: 0.9,
+              failure_rate: 0.1,
+              total_tokens: 120,
+              cost: 1.25,
+              average_latency_ms: 250,
+              last_seen_ms: NOW_MS,
+            },
+          ],
         },
       ],
     };
@@ -444,6 +538,16 @@ describe('usage analytics adapters', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].label).toBe('sk-****7890');
     expect(rows[0].label).not.toContain('abcdef1234567890');
+    expect(rows[0].contexts?.[0]).toMatchObject({
+      account: 'team-alpha',
+      authIndex: 'auth-1',
+      estimatedCost: 1.25,
+      failureRate: 0.1,
+      provider: 'codex',
+      requestCount: 10,
+      source: 'source-a',
+      sourceHash: 'source-hash-a',
+    });
     expect(maskApiKeyHash('sk-live-raw-secret-value')).toBe('sk-****alue');
   });
 

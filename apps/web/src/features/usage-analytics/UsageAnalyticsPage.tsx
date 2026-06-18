@@ -69,6 +69,7 @@ import {
   type UsageAnalyticsCacheStatus,
   type UsageAnalyticsLatencyFilter,
   type UsageAnalyticsStatus,
+  type UsageApiKeyContextRow,
   type UsageDrilldownEvent,
   type UsageHeatmapCellDetail,
   type UsageHeatmapCellSelection,
@@ -2665,6 +2666,67 @@ function KeyAnomalyTable({
   );
 }
 
+function ApiKeyContextTable({ locale, rows }: { locale: string; rows: UsageApiKeyContextRow[] }) {
+  const { t } = useTranslation();
+  return (
+    <div className={styles.contextSection}>
+      <div className={styles.panelSubHeader}>
+        <h3>{t('usage_analytics.api_key_context_title')}</h3>
+      </div>
+      {rows.length === 0 ? (
+        <div className={styles.inlineEmpty}>
+          <IconInbox size={22} />
+          <span>{t('usage_analytics.api_key_context_empty')}</span>
+        </div>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.apiKeyContextTable}>
+            <thead>
+              <tr>
+                <th>{t('usage_analytics.credential_identity_provider')}</th>
+                <th>{t('usage_analytics.credential_identity_account')}</th>
+                <th>{t('usage_analytics.credential_identity_auth_index')}</th>
+                <th>{t('usage_analytics.api_key_context_source')}</th>
+                <th>{t('usage_analytics.api_key_context_source_hash')}</th>
+                <th>{t('usage_analytics.metric_request_count')}</th>
+                <th>{t('usage_analytics.metric_estimated_cost')}</th>
+                <th>{t('usage_analytics.failure_rate')}</th>
+                <th>{t('usage_analytics.api_key_context_last_seen')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 8).map((row) => (
+                <tr key={row.id}>
+                  <td>{row.provider || '-'}</td>
+                  <td title={row.account || '-'}>{row.account || '-'}</td>
+                  <td>{row.authIndex || '-'}</td>
+                  <td title={row.source || '-'}>{row.source || '-'}</td>
+                  <td className={styles.monoCell} title={row.sourceHash || '-'}>
+                    {row.sourceHash || '-'}
+                  </td>
+                  <td>{compactNumber(row.requestCount)}</td>
+                  <td>{formatMetricValue('estimatedCost', row.estimatedCost)}</td>
+                  <td
+                    className={
+                      row.requestCount > 0 &&
+                      row.failureRate > 1 - USAGE_SUCCESS_RATE_WATCH_THRESHOLD
+                        ? styles.tonebad
+                        : ''
+                    }
+                  >
+                    {formatPercent(row.failureRate)}
+                  </td>
+                  <td>{row.lastSeenMs ? formatLocalDateTime(row.lastSeenMs, locale) : '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CredentialQuotaTable({
   locale,
   rows,
@@ -2873,6 +2935,24 @@ function UsageAnalyticsPageInner() {
   const updateFilters = (patch: Partial<typeof usage.filters>) => {
     rememberVisibleOptions();
     usage.setFilters(patch);
+  };
+  const buildApiKeyMonitoringUrl = (apiKeyHash: string, status?: UsageAnalyticsStatus) =>
+    usage.bounds
+      ? buildMonitoringDetailUrl(
+          { bucketMs: usage.bounds.fromMs, bucketEndMs: usage.bounds.toMs },
+          {
+            ...usage.filters,
+            apiKeyHash,
+            status: status ?? usage.filters.status,
+          }
+        )
+      : `/monitoring?api_key_hash=${encodeURIComponent(apiKeyHash)}`;
+  const openApiKeyCombinationHeatmap = () => {
+    const apiKeyHash = usage.selectedApiKey?.apiKeyHash || usage.selectedApiKey?.id || '';
+    if (apiKeyHash) {
+      updateFilters({ apiKeyHash });
+    }
+    usage.setActiveTab('heatmap');
   };
 
   const usageTabItems = useMemo<ReadonlyArray<SegmentedTabItem<UsageAnalyticsTab>>>(
@@ -3637,7 +3717,7 @@ function UsageAnalyticsPageInner() {
       {usage.activeTab === 'apiKeys' ? (
         <>
           <UsageSummarySection cards={apiKeySummaryCards} />
-          <section className={styles.analysisGrid}>
+          <section className={styles.apiKeyAnalysisGrid}>
             <div className={styles.tablePanel}>
               <div className={styles.panelHeader}>
                 <h2>{t('usage_analytics.api_key_rank_title')}</h2>
@@ -3657,6 +3737,34 @@ function UsageAnalyticsPageInner() {
                 onSelect={(row) => usage.setSelectedApiKeyHash(row.apiKeyHash || row.id)}
               />
             </div>
+            <div className={styles.panel}>
+              <div className={`${styles.panelHeader} ${styles.trendEntityHeader}`}>
+                <h2>{t('usage_analytics.api_key_compare_title')}</h2>
+                <div
+                  className={`${styles.segmentedControl} ${styles.trendMetricTabs}`}
+                  aria-label={t('usage_analytics.filter_metric')}
+                >
+                  {trendMetricOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`${styles.segmentButton} ${
+                        usage.trendMetric === option.value ? styles.segmentButtonActive : ''
+                      }`}
+                      onClick={() => usage.setTrendMetric(option.value)}
+                      aria-pressed={usage.trendMetric === option.value}
+                    >
+                      {t(option.labelKey)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <EntityTrendChart
+                series={usage.selectedApiKeyTrendSeries}
+                metric={usage.trendMetric}
+                highlightId={usage.selectedApiKey?.apiKeyHash || usage.selectedApiKey?.id}
+              />
+            </div>
             {usage.selectedApiKey ? (
               <DetailPanel
                 row={usage.selectedApiKey}
@@ -3667,9 +3775,9 @@ function UsageAnalyticsPageInner() {
                     size="sm"
                     onClick={() =>
                       navigate(
-                        `/monitoring?api_key_hash=${encodeURIComponent(
-                          usage.selectedApiKey?.apiKeyHash || ''
-                        )}`
+                        buildApiKeyMonitoringUrl(
+                          usage.selectedApiKey?.apiKeyHash || usage.selectedApiKey?.id || ''
+                        )
                       )
                     }
                   >
@@ -3679,10 +3787,10 @@ function UsageAnalyticsPageInner() {
                 }
               />
             ) : null}
-            <div className={styles.warningPanel}>
+            <div className={`${styles.warningPanel} ${styles.fullWidthPanel}`}>
               <div className={styles.panelHeader}>
                 <h2>{t('usage_analytics.api_key_warning_title')}</h2>
-                <button type="button" onClick={() => usage.setActiveTab('heatmap')}>
+                <button type="button" onClick={openApiKeyCombinationHeatmap}>
                   {t('usage_analytics.view_exception_combinations')}
                 </button>
               </div>
@@ -3691,29 +3799,14 @@ function UsageAnalyticsPageInner() {
                 locale={i18n.language}
                 onOpen={(row) =>
                   navigate(
-                    `/monitoring?api_key_hash=${encodeURIComponent(row.row.apiKeyHash || row.id)}`
+                    buildApiKeyMonitoringUrl(
+                      row.row.apiKeyHash || row.id,
+                      row.reasonKey === 'usage_analytics.anomaly_reason_error_rate'
+                        ? 'failed'
+                        : usage.filters.status
+                    )
                   )
                 }
-              />
-            </div>
-            <div className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <div>
-                  <h2>{t('usage_analytics.entity_trend_title')}</h2>
-                  <p>{t('usage_analytics.entity_trend_hint')}</p>
-                </div>
-                <Select
-                  value={usage.trendMetric}
-                  options={trendMetricSelectOptions}
-                  onChange={(value) => usage.setTrendMetric(value as UsageTrendMetricKey)}
-                  ariaLabel={t('usage_analytics.filter_metric')}
-                  triggerClassName={styles.compactSelectTrigger}
-                />
-              </div>
-              <EntityTrendChart
-                series={usage.apiKeyTrendSeries}
-                metric={usage.trendMetric}
-                highlightId={usage.selectedApiKey?.id}
               />
             </div>
           </section>
@@ -4214,7 +4307,7 @@ function DetailPanel({
         <h2>{title}</h2>
         {action}
       </div>
-      {type !== 'credential' ? (
+      {type === 'model' ? (
         // Unit economics + health only: absolute volumes already live in the rank table row.
         <div className={styles.detailMetrics}>
           <div>
@@ -4250,9 +4343,11 @@ function DetailPanel({
             </strong>
           </div>
         </div>
+      ) : type === 'apiKey' ? (
+        <ApiKeyContextTable locale={i18n.language} rows={row.contexts ?? []} />
       ) : (
         <>
-          <div className={styles.credentialIdentityGrid}>
+          <div className={styles.entityIdentityGrid}>
             {[
               ['credential_identity_provider', row.provider],
               ['credential_identity_account', row.account],
@@ -4266,7 +4361,9 @@ function DetailPanel({
               </div>
             ))}
           </div>
-          <UsageSummarySection cards={buildCredentialDetailCards({ locale: i18n.language, row, t })} />
+          <UsageSummarySection
+            cards={buildCredentialDetailCards({ locale: i18n.language, row, t })}
+          />
         </>
       )}
       {type === 'model' && keyDistribution && keyDistribution.length > 0 ? (

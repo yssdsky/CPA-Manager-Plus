@@ -3,6 +3,7 @@ import { useMonitoringAnalytics } from '@/features/monitoring/hooks/useMonitorin
 import {
   adaptUsageAnalyticsData,
   analyzeUsageBucket,
+  buildSelectedApiKeyTrendSeries,
   buildSelectedCredentialTrendSeries,
   buildCredentialQuotaRows,
   buildEntityTrendSeries,
@@ -17,6 +18,7 @@ import {
   buildUsageSummaryDelta,
   buildUsageAnalyticsFilters,
   buildUsageAnalyticsInclude,
+  buildUsageTimeline,
   getUsageRangeBounds,
   resolveUsageGranularity,
   USAGE_ANALYTICS_DEFAULT_FILTERS,
@@ -230,6 +232,61 @@ export function useUsageAnalytics() {
     () => buildEntityTrendSeries(adapted.apiKeyRows, adapted.timeline, trendMetric, 4),
     [adapted.apiKeyRows, adapted.timeline, trendMetric]
   );
+  const selectedApiKeyFilterHash = selectedApiKey?.apiKeyHash || selectedApiKey?.id || '';
+  const selectedApiKeyTimelineFilters = useMemo(
+    () =>
+      selectedApiKeyFilterHash
+        ? buildUsageAnalyticsFilters({ ...filters, apiKeyHash: selectedApiKeyFilterHash })
+        : {},
+    [filters, selectedApiKeyFilterHash]
+  );
+  const selectedApiKeyTimelineInclude = useMemo(
+    () => ({
+      granularity: resolvedGranularity,
+      timeline: true,
+    }),
+    [resolvedGranularity]
+  );
+  const selectedApiKeyTimelineDataScopeKey = useMemo(
+    () =>
+      JSON.stringify({
+        activeTab: activeTabState,
+        bounds,
+        filters: selectedApiKeyTimelineFilters,
+        granularity: resolvedGranularity,
+        searchQuery: debouncedSearchQuery,
+        selectedApiKeyHash: selectedApiKeyFilterHash,
+      }),
+    [
+      activeTabState,
+      bounds,
+      debouncedSearchQuery,
+      resolvedGranularity,
+      selectedApiKeyFilterHash,
+      selectedApiKeyTimelineFilters,
+    ]
+  );
+  const selectedApiKeyTimelineAnalytics = useMonitoringAnalytics({
+    fromMs: activeTabState === 'apiKeys' && selectedApiKeyFilterHash ? bounds?.fromMs : undefined,
+    toMs: activeTabState === 'apiKeys' && selectedApiKeyFilterHash ? bounds?.toMs : undefined,
+    nowMs,
+    dataScopeKey: selectedApiKeyTimelineDataScopeKey,
+    searchQuery: debouncedSearchQuery,
+    filters: selectedApiKeyTimelineFilters,
+    include: selectedApiKeyTimelineInclude,
+    throttleMs: 0,
+  });
+  const selectedApiKeyTimelineData = selectedApiKeyTimelineAnalytics.dataStale
+    ? null
+    : selectedApiKeyTimelineAnalytics.data;
+  const selectedApiKeyTimeline = useMemo(
+    () => buildUsageTimeline(selectedApiKeyTimelineData?.timeline ?? [], resolvedGranularity),
+    [resolvedGranularity, selectedApiKeyTimelineData]
+  );
+  const selectedApiKeyTrendSeries = useMemo(
+    () => buildSelectedApiKeyTrendSeries(selectedApiKey, selectedApiKeyTimeline, trendMetric),
+    [selectedApiKey, selectedApiKeyTimeline, trendMetric]
+  );
   const credentialTrendSeries = useMemo(
     () =>
       buildSelectedCredentialTrendSeries(
@@ -332,10 +389,13 @@ export function useUsageAnalytics() {
   const refresh = useCallback(() => {
     setNowMs(Date.now());
     void analytics.refresh({ force: true });
+    if (selectedApiKeyTimelineAnalytics.enabled) {
+      void selectedApiKeyTimelineAnalytics.refresh({ force: true });
+    }
     if (selectedHeatmapDate) {
       void heatmapDateAnalytics.refresh({ force: true });
     }
-  }, [analytics, heatmapDateAnalytics, selectedHeatmapDate]);
+  }, [analytics, heatmapDateAnalytics, selectedApiKeyTimelineAnalytics, selectedHeatmapDate]);
 
   return {
     filters,
@@ -384,6 +444,7 @@ export function useUsageAnalytics() {
     setTrendMetric,
     modelTrendSeries,
     apiKeyTrendSeries,
+    selectedApiKeyTrendSeries,
     credentialTrendSeries,
     keyAnomalies,
     credentialAnomalies,
